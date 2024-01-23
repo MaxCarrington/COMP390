@@ -8,7 +8,7 @@ source('./example_strategies.R');
 dataList <- getData(directory="PART1")
 # strategy will be passed in as a command line argument from jenkins
 args <- commandArgs(trailingOnly = TRUE)
-print("Test2")
+print("Test")
 if (length(args) < 1) {
   strategy <- "fixed"
 } else{
