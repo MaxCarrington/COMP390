@@ -8,7 +8,7 @@ source('example_strategies.R');
 dataList <- getData(directory="PART1")
 
 # choose strategy from example_strategies
-strategy <- "fixed"
+strategy <- "market_maker"
           
 # check that the choice is valid
 is_valid_example_strategy <- function(strategy) { 
@@ -31,6 +31,5 @@ load_strategy(strategy) # function from example_strategies.R
                                #x[(inSampDays+1):numDays])
 
 sMult <- 0.20 # slippage multiplier
-
 results <- backtest(dataList,getOrders,params,sMult)
 pfolioPnL <- plotResults(dataList,results,plotType='ggplot2')

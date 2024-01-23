@@ -8,7 +8,8 @@ example_strategies <- c("fixed",
                         "bbands_contrarian",
                         "bbands_holding_period",
                         "simple_limit",
-                        "extreme_limit"
+                        "extreme_limit",
+                        "market_maker"
                         )
 
 example_params <- list(
