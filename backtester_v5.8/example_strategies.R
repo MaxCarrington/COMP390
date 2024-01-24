@@ -9,7 +9,7 @@ example_strategies <- c("fixed",
                         "bbands_holding_period",
                         "simple_limit",
                         "extreme_limit",
-                        "market_maker",
+                        "market_making",
                         "momentum",
                         "mean_reversion"
                         )
@@ -26,7 +26,7 @@ example_params <- list(
                     "bbands_holding_period"=list(lookback=50,sdParam=1.5,series=c(1,3),posSizes=rep(1,10),holdPeriod=6),
                     "simple_limit"=list(spreadPercentage=0.001,inventoryLimits=rep(10,10)),
                     "extreme_limit"=list(spreadPercentage=0.001,inventoryLimits=rep(10,10)),
-                    "market_maker"=NULL,
+                    "market_making"=NULL,
                     "momentum"=NULL,
                     "mean_reverison"=NULL
                     )
