@@ -9,6 +9,7 @@ source('./Indicators/ADF_test.R')
 source('./Indicators/hurst_exponent.R')
 source('./Indicators/half_life_of_mean_reversion.R')
 source('./Indicators/variance_ratio_test.R')
+source('./risk_management/position_size_calculator.R')
 # load data
 dataList <- getData(directory="PART1")
 # strategy will be passed in as a command line argument from jenkins
@@ -39,7 +40,29 @@ outSampledataList <- lapply(dataList, function(x)
   x[(inSampDays+1):numDays])
 
 
-sMult <- 0.20 # slippage multiplier
-results <- backtest(dataList,getOrders,params,sMult)
-pfolioPnL <- plotResults(dataList,results,plotType='ggplot2')
+
+
+
+
+
+
+
+
+
+
+#Stuff for the Kelly formula
+#trades = list(
+  #wins = c(10, 20, 30, 10, 20, 20, 30),
+  #losses = c(-10, -20, -10)
+#)
+#analysePreviousTrades(trades)
+#position_size = calculatePositionSize()
+#print(position_size)
+
+# Reading in ATR data from file example
+#allInSampATRs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/allInSampATRs.rds")
+
+#sMult <- 0.20 # slippage multiplier
+#results <- backtest(dataList,getOrders,params,sMult)
+#pfolioPnL <- plotResults(dataList,results,plotType='ggplot2')
 
