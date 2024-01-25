@@ -1,96 +1,79 @@
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------
+# LookbackSizes list, used for all
+#--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+lookbackSize <- list(weekly = 7, 
+                     fortnightly =14, 
+                     monthly = 30,
+                     allInSampDays = inSampDays
+)
+#--------------------------------------------------------------------------------------------------------------------------------------------------------------
 #Calculation of Volatility indexes for each time series
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------
-vixLookback <- list(weekly = 7, 
-                    fortnightly =14, 
-                    monthly = 30,
-                    allInSampDays = inSampDays
-)
-#The volatility index for all of the in-sample days
-allInSampVIXs <- lapply(inSampleDataList, function(series){
-  inSampleTotalVIX <- annualisation(series, vixLookback$allInSampDays)
-  return(inSampleTotalVIX)
+# Assuming inSampleDataList is a list of data frames, and vixLookback is a structure holding different lookback values
+
+# Calculates the VIX for every week over the in-sample data, for each time series
+weeklyVIXs <- lapply(inSampleDataList, function(series) {
+  calculateVIXForRange(series, numToCheck = weeksToCheck, lookback = lookbackSize$weekly, rangeIncrease = 7)
 })
 
-# Number of weeks to check can be changed
-weeksToCheck <- 78 # currently set to all of the in-sample weeks (in-sample / 7)
-weekLength <- 0 # Set to 0 as the start range for the first week should be 1
-
-#Calculates the VIX for every month over the in-sample data, for each time series
-weeklyVIXs <- lapply(inSampleDataList, function(series){
-  vixValues <- calculateVIXForRange(series=series, numToCheck = weeksToCheck, lookback = vixLookback$weekly, rangeIncrease = 7)
-  return(vixValues)
+# Calculates the VIX for every month over the in-sample data, for each time series
+monthlyVIXs <- lapply(inSampleDataList, function(series) {
+  calculateVIXForRange(series, numToCheck = monthsToCheck, lookback = lookbackSize$monthly, rangeIncrease = 30)
 })
 
-# Number of weeks to check can be changed
-monthsToCheck <- 18 # currently set to all of the in-sample months (inSample / 30 - approximated for simplicity) 
-monthLength <- 0 # Set to 0 as the start range for the first week should be 1
-
-#Calculates the VIX for every month over the in-sample data, for each time series
-monthlyVIXs <- lapply(inSampleDataList, function(series){
-  vixValues <- calculateVIXForRange(series=series, numToCheck = monthsToCheck, lookback = vixLookback$monthly, rangeIncrease = 30)
-  return(vixValues)
+# Calculates the VIX for every fortnight over the in-sample data, for each time series
+fortnightlyVIXs <- lapply(inSampleDataList, function(series) {
+  calculateVIXForRange(series, numToCheck = fortnightsToCheck, lookback = lookbackSize$fortnightly, rangeIncrease = 14)
 })
 
-fortnightsToCheck <- 39 # currently set to all of the in-sample fortnights (InSample / 30 - approximated for simplicity) 
-fortnightLength <- 0 # Set to 0 as the start range for the first week should be 1
-fortnightlyVIXs <- lapply(inSampleDataList, function(series){
-  vixValues <- calculateVIXForRange(series=series, numToCheck = fortnightsToCheck, lookback = vixLookback$fortnightly, rangeIncrease = 14)
-  return(vixValues)
-})
+
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------
 #Calculation of Average true ranges for each time series
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-#The volatility index for all of the in-sample days
-allInSampATRs <- lapply(inSampleDataList, function(series){
-  inSampleATR <- calculateTrueRange(series, vixLookback$allInSampDays)
-  return(inSampleATR)
+# Calculate the weekly ATR for each series
+weeklyATRs <- lapply(inSampleDataList, function(series) {
+  calculateATRForRange(series, numToCheck = weeksToCheck, lookback = lookbackSize$weekly, rangeIncrease = 7)
 })
 
-# Number of weeks to check can be changed
-weeksToCheck <- 78 # currently set to all of the in-sample weeks (in-sample / 7)
-weekLength <- 0 # Set to 0 as the start range for the first week should be 1
 
-#Calculates the ATR for every week over the in-sample data, for each time series
-weeklyATRs <- lapply(inSampleDataList, function(series){
-  atrValues <- calculateATRForRange(series=series, numToCheck = weeksToCheck, lookback = vixLookback$weekly, rangeIncrease = 7)
-  return(atrValues)
-})
-print(weeklyATRs)
-
-# Number of weeks to check can be changed
-monthsToCheck <- 18 # currently set to all of the in-sample months (inSample / 30 - approximated for simplicity) 
-monthLength <- 0 # Set to 0 as the start range for the first week should be 1
-
-#Calculates the ATR for every month over the in-sample data, for each time series
-monthlyATRs <- lapply(inSampleDataList, function(series){
-  atrValues <- calculateATRForRange(series=series, numToCheck = monthsToCheck, lookback = vixLookback$monthly, rangeIncrease = 30)
-  return(atrValues)
+# Calculate the monthly ATR for each series
+monthlyATRs <- lapply(inSampleDataList, function(series) {
+  calculateATRForRange(series, numToCheck = monthsToCheck, lookback = lookbackSize$monthly, rangeIncrease = 30)
 })
 
-#Calculates the ATR for every week over the in-sample data, for each time series
-fortnightsToCheck <- 39 # currently set to all of the in-sample fortnights (InSample / 14 - approximated for simplicity) 
-fortnightLength <- 0 # Set to 0 as the start range for the first week should be 1
-fortnightlyATRs <- lapply(inSampleDataList, function(series){
-  atrValues <- calculateATRForRange(series=series, numToCheck = fortnightsToCheck, lookback = vixLookback$fortnightly, rangeIncrease = 14)
-  return(atrValues)
+# Calculate the fortnightly ATR for each series
+fortnightlyATRs <- lapply(inSampleDataList, function(series) {
+  calculateATRForRange(series, numToCheck = fortnightsToCheck, lookback = lookbackSize$fortnightly, rangeIncrease = 14)
 })
+
 
 # Saving all VIX information for retrieval as computation is slow
-saveRDS(weeklyVIXs, file = "./Time_series_analysis_data/weeklyVIXs.rds")
-saveRDS(fortnightlyVIXs, file = "./Time_series_analysis_data/fortnightlyVIXs.rds")
-saveRDS(monthlyVIXs, file = "./Time_series_analysis_data/monthlyVIXs.rds")
-saveRDS(allInSampVIXs, file = "./Time_series_analysis_data/allInSampVIXs.rds")
+saveRDS(weeklyVIXs, file = "./Time_series_analysis_data/PART1/weeklyVIXs.rds")
+saveRDS(fortnightlyVIXs, file = "./Time_series_analysis_data/PART1/fortnightlyVIXs.rds")
+saveRDS(monthlyVIXs, file = "./Time_series_analysis_data/PART1/monthlyVIXs.rds")
 
 # Saving all ATR information for retrieval as computation is slow
-saveRDS(weeklyATRs, file = "./Time_series_analysis_data/weeklyATRs.rds")
-saveRDS(fortnightlyATRs, file = "./Time_series_analysis_data/fortnightlyATRs.rds")
-saveRDS(monthlyATRs, file = "./Time_series_analysis_data/monthlyATRs.rds")
-saveRDS(allInSampATRs, file = "./Time_series_analysis_data/allInSampATRs.rds")
+saveRDS(weeklyATRs, file = "./Time_series_analysis_data/PART1/weeklyATRs.rds")
+saveRDS(fortnightlyATRs, file = "./Time_series_analysis_data/PART1/fortnightlyATRs.rds")
+saveRDS(monthlyATRs, file = "./Time_series_analysis_data/PART1/monthlyATRs.rds")
+# Reading in ATR data from file example
+fortnightlyATRs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/fortnightlyATRs.rds")
+weeklyATRs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/weeklyATRs.rds")
+monthlyATRs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/monthlyATRs.rds")
 
-# Loading weeklyVIXs
-#weeklyVIXs <- readRDS("./weeklyVIXs.rds")
+fortnightlyVIXs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/fortnightlyVIXs.rds")
+weeklyVIXs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/weeklyVIXs.rds")
+monthlyVIXs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/monthlyVIXs.rds")
+
+plotVIXData("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/weeklyVIXs.rds", 
+            "/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/monthlyVIXs.rds", 
+            "/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/fortnightlyVIXs.rds", 
+            titleString = "VIX Analysis")
+
+fortnightlyATRs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/fortnightlyATRs.rds")
+fortnightlyVIXs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/fortnightlyVIXs.rds")
+plotATRandVIXComparison(fortnightlyATRs, fortnightlyVIXs)
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------

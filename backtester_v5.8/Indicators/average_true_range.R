@@ -8,30 +8,31 @@
 # 14 day is typically used
 
 # Calculate True Range from a period in time
-calculateTrueRange <- function(currentSeries, lookback, startRange = 1) {
+calculateTrueRange <- function(series, startRangeIndex, lookback) {
+  endIndex <- startRangeIndex + lookback - 1
+  # Ensure we do not exceed the length of the series
   trueRanges <- numeric(lookback)
-  for (i in (startRange + 1):length(lookback)) {
-    highLowDiff <- currentSeries[i]$High - currentSeries[i]$Low
-    highPrevClose <- currentSeries[i]$High - currentSeries[i - 1]$Close
-    lowPrevClose <- currentSeries[i]$Low - currentSeries[i - 1]$Close
+  for (i in 1:lookback) {
+    currentIndex <- startRangeIndex + i - 1
+    highLowDiff <- series$High[currentIndex] - series$Low[currentIndex]
+    highPrevClose <- series$High[currentIndex] - series$Close[currentIndex - 1]
+    lowPrevClose <- series$Low[currentIndex] - series$Close[currentIndex - 1]
     
-    trueRanges[i] <- max(abs(highLowDiff), abs(highPrevClose), abs(lowPrevClose))
+    trueRanges[i] <- max(highLowDiff, abs(highPrevClose), abs(lowPrevClose))
   }
-
-  #Sums up the true ranges and divides by the lookback size
-  averageTrueRange <- sum(trueRanges) / length(currentSeries)
-  return(averageTrueRange)
+  
+  mean(trueRanges)
 }
 
-# Repeatedly calculates the Average True Range for a specified range of time over a given time series
-calculateATRForRange <- function(series, numToCheck,lookback, rangeLength=0, rangeIncrease){
-  currentSeriesATRs <- c()
+calculateATRForRange <- function(series, numToCheck, lookback, rangeIncrease = 0) {
+  currentSeriesATRs <- numeric(numToCheck)
   startRangeIndex <- 1
-  for(i in 1:numToCheck){
-    averageTrueRange <- calculateTrueRange(series, lookback, startRangeIndex)
-    currentSeriesATRs <- c(currentSeriesATRs, averageTrueRange)
+  
+  for (i in 1:numToCheck) {
+    currentSeriesATRs[i] <- calculateTrueRange(series, startRangeIndex, lookback)
     startRangeIndex <- startRangeIndex + rangeIncrease
-    lookback <- lookback + rangeIncrease
   }
+  
   return(currentSeriesATRs)
 }
+

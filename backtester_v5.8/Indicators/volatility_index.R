@@ -12,39 +12,45 @@
 # Annualisation: Multiply the daily volatility by the square root of the number of trading 
 # days in a year to annualise the volatility.
 
-logatithmicReturns <- function(currentDayClose, previousDayClose){
-  return(log(currentDayClose, previousDayClose))
+logarithmicReturns <- function(currentDayClose, previousDayClose) {
+  return(log(currentDayClose / previousDayClose))
 }
 
-dailyVolatility <- function(series, lookback, startRange=1){
-  logReturns <- c()
-  for(i in (startRange+1):lookback){
-    logReturns <- c(logReturns, logatithmicReturns(prices[i]$Close, prices[i-1]$Close))
+dailyVolatility <- function(series, lookback) {
+  if(nrow(series) < lookback) {
+    stop("Not enough data for the specified lookback period")
   }
-  meanLogReturn <- (mean(logReturns))
-  varianceSum <- 0
-  for(i in 1:length(logReturns)){
-    varianceSum <- varianceSum + (logReturns[i] - meanLogReturn)**2
-  }
-  volatilityIndex <- sqrt((varianceSum/(lookback-1)))
-  return(volatilityIndex)
+  closingPrices <- tail(series$Close, lookback)
+  logReturns <- diff(log(closingPrices))
+  return(sd(logReturns,na.rm=TRUE))
 }
 
-annualisation <- function(series, lookback, startRange=1){
-  dailyVol <- dailyVolatility(prices, lookback, startRange) 
-  numTradeDayInYear <- 252
-  annualised <- dailyVol * sqrt(numTradeDayInYear)
-  return (annualised)
+annualisation <- function(series, lookback) {
+  dailyVol <- dailyVolatility(series, lookback)
+  numTradeDaysInYear <- 252
+  annualisedVol <- dailyVol * sqrt(numTradeDaysInYear)
+  return(annualisedVol)
 }
-# Repeatedly calculates the VIX for a specified range of time over a given time series
-calculateVIXForRange <- function(series, numToCheck,lookback, rangeLength=0, rangeIncrease){
-  currentSeriesVIXs <- c()
+
+calculateVIXForRange <- function(series, numToCheck, lookback, rangeIncrease) {
+  currentSeriesVIXs <- numeric(numToCheck)
   startRangeIndex <- 1
-  for(i in 1:numToCheck){
-    volatilityIndex <- annualisation(series, lookback, startRangeIndex)
-    currentSeriesVIXs <- c(currentSeriesVIXs, volatilityIndex)
+  
+  for(i in 1:numToCheck) {
+    endIndex <- startRangeIndex + lookback - 1
+    
+    # Check if the endIndex exceeds the series length
+    if(endIndex > nrow(series)) {
+      currentSeriesVIXs[i] <- NA
+    } else {
+      currentRange <- series[startRangeIndex:endIndex, ]
+      currentSeriesVIXs[i] <- annualisation(currentRange, lookback)
+    }
+    
+    # Increment startRangeIndex for the next period
     startRangeIndex <- startRangeIndex + rangeIncrease
-    lookback <- lookback + rangeIncrease
   }
+  
   return(currentSeriesVIXs)
 }
+

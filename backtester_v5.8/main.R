@@ -10,6 +10,7 @@ source('./Indicators/hurst_exponent.R')
 source('./Indicators/half_life_of_mean_reversion.R')
 source('./Indicators/variance_ratio_test.R')
 source('./risk_management/position_size_calc.R')
+source('./plotting/plot_code/plot_volatility.R')
 # load data
 dataList <- getData(directory="PART1")
 # strategy will be passed in as a command line argument from jenkins
@@ -39,17 +40,6 @@ inSampleDataList <- lapply(dataList, function(x) x[1:inSampDays])
 outSampledataList <- lapply(dataList, function(x) 
   x[(inSampDays+1):numDays])
 
-
-
-
-
-
-
-
-
-
-
-
 #Stuff for the Kelly formula
 #trades = list(
   #wins = c(10, 20, 30, 10, 20, 20, 30),
@@ -59,18 +49,52 @@ outSampledataList <- lapply(dataList, function(x)
 #position_size = calculatePositionSize()
 #print(position_size)
 
-# Reading in ATR data from file example
-#allInSampATRs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/allInSampATRs.rds")
+# Assuming 'inSampleDataList' is a list of data frames where each data frame represents a series
+# and 'vixLookback' is a list or other structure with predefined lookback periods
+lookbackSize <- list(weekly = 7, 
+                     fortnightly =14, 
+                     monthly = 30,
+                     allInSampDays = inSampDays
+)
+fortnightlyATRs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/fortnightlyATRs.rds")
+fortnightlyVIXs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/fortnightlyVIXs.rds")
+print(fortnightlyATRs)
 
-sMult <- 0.20 # slippage multiplier
-results <- backtest(dataList,getOrders,params,sMult)
-pfolioPnL <- plotResults(dataList,results,plotType='ggplot2')
 
-for (i in 1:length(results$pnlList)) {
-  cat("Time Series", i,":","\n")
-  cat("Final Cumulative PnL:", tail(results$pnlList[[i]]$CumPnL, 1), "\n")
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#plotATRandVIX(weeklyATRs, weeklyVIXs, titleString = "Weekly ATR and VIX for Each Series")
+
+#sMult <- 0.20 # slippage multiplier
+#results <- backtest(dataList,getOrders,params,sMult)
+#pfolioPnL <- plotResults(dataList,results,plotType='ggplot2')
+
+#for (i in 1:length(results$pnlList)) {
+  #cat("Time Series", i,":","\n")
+  #cat("Final Cumulative PnL:", tail(results$pnlList[[i]]$CumPnL, 1), "\n")
+#}
 
 #Print the final account balance
-final_balance <- pfolioPnL$pfoliosPnL$CumPnL[nrow(pfolioPnL$pfoliosPnL)]
-cat("Portfolio Profit and Loss: ", round(final_balance, digits=2), "\n")
+#final_balance <- pfolioPnL$pfoliosPnL$CumPnL[nrow(pfolioPnL$pfoliosPnL)]
+#cat("Portfolio Profit and Loss: ", round(final_balance, digits=2), "\n")
