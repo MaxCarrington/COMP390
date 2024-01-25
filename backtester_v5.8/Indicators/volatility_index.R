@@ -16,7 +16,7 @@ logatithmicReturns <- function(currentDayClose, previousDayClose){
   return(log(currentDayClose, previousDayClose))
 }
 
-dailyVolatility <- function(prices, lookback, startRange=1){
+dailyVolatility <- function(series, lookback, startRange=1){
   logReturns <- c()
   for(i in (startRange+1):lookback){
     logReturns <- c(logReturns, logatithmicReturns(prices[i]$Close, prices[i-1]$Close))
@@ -30,7 +30,7 @@ dailyVolatility <- function(prices, lookback, startRange=1){
   return(volatilityIndex)
 }
 
-annualisation <- function(prices, lookback, startRange=1){
+annualisation <- function(series, lookback, startRange=1){
   dailyVol <- dailyVolatility(prices, lookback, startRange) 
   numTradeDayInYear <- 252
   annualised <- dailyVol * sqrt(numTradeDayInYear)
