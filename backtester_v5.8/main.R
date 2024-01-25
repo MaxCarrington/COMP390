@@ -9,7 +9,7 @@ source('./Indicators/ADF_test.R')
 source('./Indicators/hurst_exponent.R')
 source('./Indicators/half_life_of_mean_reversion.R')
 source('./Indicators/variance_ratio_test.R')
-source('./risk_management/position_size_calculator.R')
+source('./risk_management/position_size_calc.R')
 # load data
 dataList <- getData(directory="PART1")
 # strategy will be passed in as a command line argument from jenkins
@@ -62,7 +62,15 @@ outSampledataList <- lapply(dataList, function(x)
 # Reading in ATR data from file example
 #allInSampATRs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/allInSampATRs.rds")
 
-#sMult <- 0.20 # slippage multiplier
-#results <- backtest(dataList,getOrders,params,sMult)
-#pfolioPnL <- plotResults(dataList,results,plotType='ggplot2')
+sMult <- 0.20 # slippage multiplier
+results <- backtest(dataList,getOrders,params,sMult)
+pfolioPnL <- plotResults(dataList,results,plotType='ggplot2')
 
+for (i in 1:length(results$pnlList)) {
+  cat("Time Series", i,":","\n")
+  cat("Final Cumulative PnL:", tail(results$pnlList[[i]]$CumPnL, 1), "\n")
+}
+
+#Print the final account balance
+final_balance <- pfolioPnL$pfoliosPnL$CumPnL[nrow(pfolioPnL$pfoliosPnL)]
+cat("Portfolio Profit and Loss: ", round(final_balance, digits=2), "\n")
