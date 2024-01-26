@@ -8,11 +8,18 @@
 
 # Performs a variance ratio test on a given time series and returns the variance
 if (!require(vrtest)) install.packages("vrtest")
-library(vrtest)
-performVarianceRatioTest <- function(series){
+  library(vrtest)
+calculateHurstExponent <- function(series) {
   log_returns <- diff(log(series))
-  log_returns <- na.omit(log_returns)
-  vr_test_result <- Lo.Mac(log_returns, k = 2) # 'k' is the lag parameter
+  log_returns <- na.omit(log_returns)  # Removing NAs
+  hurst_result <- hurstexp(log_returns) # Assuming 'hurstexp' is the function from the package you are using
+  return(hurst_result$He) #Maybe change $He to any of the different hurst values
 }
 
+
+#Call with:
+#variance_ratio_results <- lapply(inSampleDataList, function(series){
+  #result <- performVarianceRatioTest(series$Close)
+#})
+#print(variance_ratio_results)
 #-------------------------------------------------------------------------------

@@ -58,11 +58,22 @@ lookbackSize <- list(weekly = 7,
 )
 fortnightlyATRs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/fortnightlyATRs.rds")
 fortnightlyVIXs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/fortnightlyVIXs.rds")
-# Create an empty list to store the results
-variance_ratio_results <- lapply(inSampleDataList, function(series){
-  result <- performVarianceRatioTest(series$Close)
+
+
+hurst_exponent_close <- lapply(inSampleDataList, function(series){
+  result <- calculateHurstExponent(series$Close)
 })
-print(variance_ratio_results)
+hurst_exponent_open <- lapply(inSampleDataList, function(series){
+  result <- calculateHurstExponent(series$Open)
+})
+for(i in 1:10){
+  print(i)
+  print(hurst_exponent_close[i])
+  print(hurst_exponent_open[i])
+}
+
+
+
 
 
 
