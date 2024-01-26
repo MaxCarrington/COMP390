@@ -58,7 +58,11 @@ lookbackSize <- list(weekly = 7,
 )
 fortnightlyATRs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/fortnightlyATRs.rds")
 fortnightlyVIXs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/fortnightlyVIXs.rds")
-print(fortnightlyATRs)
+# Create an empty list to store the results
+variance_ratio_results <- lapply(inSampleDataList, function(series){
+  result <- performVarianceRatioTest(series$Close)
+})
+print(variance_ratio_results)
 
 
 
@@ -80,11 +84,6 @@ print(fortnightlyATRs)
 
 
 
-
-
-
-
-#plotATRandVIX(weeklyATRs, weeklyVIXs, titleString = "Weekly ATR and VIX for Each Series")
 
 #sMult <- 0.20 # slippage multiplier
 #results <- backtest(dataList,getOrders,params,sMult)
