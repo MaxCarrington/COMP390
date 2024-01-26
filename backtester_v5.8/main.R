@@ -60,17 +60,6 @@ fortnightlyATRs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtest
 fortnightlyVIXs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/PART1/fortnightlyVIXs.rds")
 
 
-hurst_exponent_close <- lapply(inSampleDataList, function(series){
-  result <- calculateHurstExponent(series$Close)
-})
-hurst_exponent_open <- lapply(inSampleDataList, function(series){
-  result <- calculateHurstExponent(series$Open)
-})
-for(i in 1:10){
-  print(i)
-  print(hurst_exponent_close[i])
-  print(hurst_exponent_open[i])
-}
 
 
 

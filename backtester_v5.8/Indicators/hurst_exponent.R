@@ -9,10 +9,26 @@
 
 # Calculates the Hurst exponent for a given time series and returns the Hurst 
 # exponent value
-if (!require(pracma)) install.packages("pracma")
+if (!require(pracma)) 
+  install.packages("pracma")
   library(pracma)
+
 calculateHurstExponent <- function(timeSeries) {
   H <- hurstexp(timeSeries)
   return(H$Hrs)
 }
+
+#Call with:
+#hurst_exponent_close <- lapply(inSampleDataList, function(series){
+  #result <- calculateHurstExponent(series$Close)
+#})
+#hurst_exponent_open <- lapply(inSampleDataList, function(series){
+  #result <- calculateHurstExponent(series$Open)
+#)}
+#for(i in 1:10){
+  #print(i)
+#  print(hurst_exponent_close[i])
+ # print(hurst_exponent_open[i])
+#}
+
 #-------------------------------------------------------------------------------

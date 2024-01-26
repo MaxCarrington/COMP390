@@ -7,8 +7,10 @@
 #-------------------------------------------------------------------------------
 
 # Performs a variance ratio test on a given time series and returns the variance
-if (!require(vrtest)) install.packages("vrtest")
+if (!require(vrtest)) 
+  install.packages("vrtest")
   library(vrtest)
+
 calculateHurstExponent <- function(series) {
   log_returns <- diff(log(series))
   log_returns <- na.omit(log_returns)  # Removing NAs
