@@ -84,7 +84,6 @@ fortnightlyVIXs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtest
 
 
 
-
 #sMult <- 0.20 # slippage multiplier
 #results <- backtest(dataList,getOrders,params,sMult)
 #pfolioPnL <- plotResults(dataList,results,plotType='ggplot2')
