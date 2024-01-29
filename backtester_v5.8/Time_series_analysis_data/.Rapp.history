@@ -1,0 +1,4 @@
+load("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/fortnightlyATRs.rds")
+load("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/allInSampATRs.rds")
+load("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/allInSampATRs.rds")
+allInSampATRs <- readRDS("/Users/maxcarrington/Documents/COMP390/Code/backtester_v5.8/Time_series_analysis_data/allInSampATRs.rds")

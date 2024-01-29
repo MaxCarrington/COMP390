@@ -1,0 +1,96 @@
+#-------------------------------------------------------------------------------
+# - Mean reverting series analysis
+#   - Calculate the variance ratio for each time series and if the null 
+#   - Calculate the half life of mean-reversion
+#   - Calculate the ADF test
+#   - Calculate the Hurst exponent
+#   - Score each time series out of 100 based on above
+#   - If score is higher than 20 use.
+#-------------------------------------------------------------------------------
+
+#Scoring is done out of 100
+source('./Indicators/ADF_test.R')
+source('./Indicators/hurst_exponent.R')
+source('./Indicators/half_life_of_mean_reversion.R')
+source('./Indicators/variance_ratio_test.R')
+
+meanRevSuitable <- function(series, index){
+  thresh <- 0.05
+  score <- 0
+  consistencyScore <- 0
+  meanRevattributes <- list(HVal =calculateHurstExponent(series$Close), 
+                           RndWalk= performVarianceRatioTest(series$Close), 
+                           UnitRoot = performADFTest(series$Close)$p.value, 
+                           HalfLife= calculateHalfLife(series$Close))
+  
+  if(meanRevattributes$HVal < 0.5){
+    score <- score + 20
+    consistencyScore <- consistencyScore + 1
+  }
+  else if(meanRevattributes$HVal > 0.45 && meanRevattributes$HVal < 0.55){
+    score <- score + 5
+  }
+  if (length(meanRevattributes$RndWalk) > 0){
+    score <- score + 15
+    consistencyScore <- consistencyScore + 1
+  }
+  if(!is.na(meanRevattributes$UnitRoot) && meanRevattributes$UnitRoot < 0.05){
+    score <- score + 20
+    consistencyScore <- consistencyScore + 1
+  }
+  
+  halfLifeDuration <- determineHalfLife(meanRevattributes)
+  halfLifeScore <- calcHalfLifeScore(halfLifeDuration)
+  score <- score + halfLifeScore
+  
+  if(score > 0 && consistencyScore == 3)
+    score <- score + 20
+  
+  meanRevertingInfo <- list(attributes = meanRevattributes,
+                            meanRevScore = score,
+                            halfLifeDuration = halfLifeDuration,
+                            seriesIndex = index
+                            )
+  return(meanRevertingInfo)
+}
+
+calcHalfLifeScore <- function(halfLife){
+  score <- switch(halfLife,
+         "SHORT" = 25,
+         "MEDIUM" = 15,
+         "LONG" = 5,
+         "TOO_LONG" = 0)
+  return(score)
+}
+
+determineHalfLife <- function(attributes){
+  duration <- ""
+  if(attributes$HalfLife$HalfLife_WithIntercept < 15 || attributes$HalfLife$HalfLife_NoIntercept < 15){
+    duration <- "SHORT"
+  }
+  else if(attributes$HalfLife$HalfLife_WithIntercept < 30 || attributes$HalfLife$HalfLife_NoIntercept < 30){
+    duration <- "MEDIUM"
+  }
+  else if(attributes$HalfLife$HalfLife_WithIntercept < 50 || attributes$HalfLife$HalfLife_NoIntercept < 50){
+    duration <- "LONG"
+  }
+  else{
+    duration <- "TOO_LONG"
+  }
+  return(duration)
+}
+#How to call:
+#meanRevertingSeries <- list()
+#for (i in 1:length(inSampleDataList)) {
+  #series <- meanRevSuitable(inSampleDataList[[i]]$Close, i)
+  #if (series$meanRevScore >= 20) {
+    #print("\n")
+    #print("\n")
+    #print(series)
+    #meanRevertingSeries <- c(meanRevertingSeries, series)
+    #cat("Series Index: ", series$seriesIndex, "\n")
+    #cat("Series Score: ", series$meanRevScore, "\n", "\n")
+  #}
+#}
+
+
