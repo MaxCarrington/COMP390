@@ -13,6 +13,15 @@
 # days in a year to annualise the volatility.
 
 # Function to calculate the VIX for a given period
+
+dailyVolatility <- function(series, lookback) {
+  if(nrow(series) < lookback) {
+    stop("Not enough data for the specified lookback period")
+  }
+closingPrices <- tail(series$Close, lookback)
+logReturns <- diff(log(closingPrices))
+return(sd(logReturns,na.rm=TRUE))
+}
 calculateVIXForPeriod <- function(series, startRangeIndex, lookback) {
   endIndex <- startRangeIndex + lookback - 1
   if (endIndex > nrow(series)) {
@@ -29,7 +38,6 @@ calculateVIXForPeriod <- function(series, startRangeIndex, lookback) {
 calculateVIXForRangeXTS <- function(series, lookback) {
   indicatorSize <- length(series$Close) / lookback
   startRangeIndex <- 1
-  print("Test")
   currentSeriesVIXs <- numeric(indicatorSize)
   vixDates <- numeric(indicatorSize)
   

@@ -59,7 +59,13 @@ weeklyATRs <- lapply(inSampleDataList, function(series) {
 weeklyVIXs <- lapply(inSampleDataList, function(series) {
   calculateVIXForRangeXTS(series, lookbackSizes$weekly)
 })
-print("testing")
+series <- inSampleDataList[[1]]
+
+print(weeklyATRs[[1]])
+print(weeklyVIXs[[1]])
+
+
+
 
 
 
