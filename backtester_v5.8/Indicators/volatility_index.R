@@ -29,7 +29,7 @@ calculateVIXForPeriod <- function(series, startRangeIndex, lookback) {
 calculateVIXForRangeXTS <- function(series, lookback) {
   indicatorSize <- length(series$Close) / lookback
   startRangeIndex <- 1
-  
+  print("Test")
   currentSeriesVIXs <- numeric(indicatorSize)
   vixDates <- numeric(indicatorSize)
   
