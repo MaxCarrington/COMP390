@@ -1,38 +1,41 @@
 library(quantmod)
-# Function to create a candlestick chart using base R plotting
+
 createCandlestickChart <- function(price_series) {
   if (!inherits(price_series, "xts")) {
     stop("price_series must be an xts object.")
   }
   
-  # Convert xts object to a data frame
   df <- data.frame(Date = index(price_series), coredata(price_series))
+  colnames(df) <- c("Date", "Open", "High", "Low", "Close") # assuming the price series has these columns
   
-  # Create a plot
   plot(x = df$Date, y = df$Close, type = "n", xlab = "Date", ylab = "Price", main = "Candlestick Chart")
-  # Adding candlesticks
-  candlesticks <- function(i) {
+  
+  for (i in 1:nrow(df)) {
     if (df$Close[i] >= df$Open[i]) {
       rect(df$Date[i] - 0.3, df$Open[i], df$Date[i] + 0.3, df$Close[i], col = "green", border = "black")
     } else {
       rect(df$Date[i] - 0.3, df$Close[i], df$Date[i] + 0.3, df$Open[i], col = "red", border = "black")
     }
   }
-  sapply(1:nrow(df), candlesticks)
+  
+  # Now add the x-axis with monthly intervals
+  axis(1, at = seq(from=min(df$Date), to=max(df$Date), by="months"), labels = FALSE)
 }
 
-# Function to create a base R line plot for ATR or VIX
 createLinePlot <- function(series, title, color) {
   if (!inherits(series, "xts") && !inherits(series, "zoo")) {
     stop("series must be an xts or zoo object.")
   }
+  
   plot(index(series), coredata(series), type = "l", col = color, xlab = "Date", ylab = title, main = title)
+  
+  # Add x-axis with monthly intervals
+  axis(1, at = seq(from=min(index(series)), to=max(index(series)), by="months"), labels = FALSE)
 }
 
-# Function to plot all three together
-plotAll <- function(price_series, atr_series, vix_series) {
+plotAll <- function(price_series, atr_series, vix_series, combined_ATRVIX) {
   # Open a new plot window
-  par(mfrow = c(3, 1), mar = c(4, 4, 2, 1))
+  par(mfrow = c(4, 1), mar = c(4, 4, 2, 1))
   
   # Plot the candlestick chart
   createCandlestickChart(price_series)
@@ -42,11 +45,7 @@ plotAll <- function(price_series, atr_series, vix_series) {
   
   # Plot VIX
   createLinePlot(vix_series, "VIX", "blue")
+  
+  # Plot Combined ATR-VIX
+  createLinePlot(combined_ATRVIX, "Combined ATR-VIX", "purple")
 }
-
-# Usage example
-#vix <- weeklyVIXs[[1]]
-#atr <- weeklyATRs[[1]]
-#print(weeklyATRs[[1]])
-#plotAll(series, atr, vix)
-

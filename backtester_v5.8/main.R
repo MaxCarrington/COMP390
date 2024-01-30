@@ -52,17 +52,20 @@ lookbackSizes <- list(weekly = 7,
                      monthly = 30,
                      allInSampDays = inSampDays
 )
+
 # Calculates the VIX for every week over the in-sample data, for each time series
 weeklyATRs <- lapply(inSampleDataList, function(series) {
   calculateATRForRangeXTS(series, lookbackSizes$weekly)
 })
+
 weeklyVIXs <- lapply(inSampleDataList, function(series) {
   calculateVIXForRangeXTS(series, lookbackSizes$weekly)
 })
-series <- inSampleDataList[[1]]
 
-print(weeklyATRs[[1]])
-print(weeklyVIXs[[1]])
+
+
+
+
 
 
 

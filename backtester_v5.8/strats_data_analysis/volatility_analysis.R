@@ -10,16 +10,14 @@
 source('./Indicators/average_true_range.R')
 source('./Indicators/volatility_index.R')
 
-analyseMonthlyVolatility <- function(series, lookbackSizes){
+analyseMonthlyVolatility <- function(series, lookback){
   #Calculate the fortnightly indicator and weeklyVIXs
-  weeksToCheck = (length(inSampleDataList[[1]]$Close) / 7)
-  weeklyATRs<- calculateATRForRange(series, numToCheck = weeksToCheck, lookback = lookbackSizes$weekly, rangeIncrease = 7)
-  weeklyVIXs <- calculateVIXForRange(series, numToCheck = weeksToCheck, lookback = lookbackSizes$weekly, rangeIncrease = 7)
+  #Lookback should be 7
+  #Pass in weeklyATR/weeklyVIX
+  normalisedATRs <- zScoreNormalisation(calculateATRForRangeXTS(series,lookback))
+  normalisedVIXs <- zScoreNormalisation(calculateVIXForRangeXTS(series, lookback))
   
-  normalisedATRs <- zScoreNormalisation(weeklyATRs)
-  normalisedVIXs <- zScoreNormalisation(weeklyVIXs)
-  
-  combinedATRVIX <- normATRandVIX(weeklyATRs, normalisedVIXs)
+  combinedATRVIX <- normATRandVIX(normalisedATRs, normalisedVIXs)
   
   volatilityClassifications <- classifyVolatility(combinedATRVIX)
   
@@ -148,11 +146,6 @@ combinedVolatilityThreshs <- function(combinedATRVIX){
   }
   return(volatilityPeriods)
 }
-
-
-
-
-
 #Compute mean and standard deviation for each list, and apply the zScore forumla 
 zScoreNormalisation <- function(indicatorValues){
   mean <- mean(indicatorValues, na.rm = TRUE)
@@ -161,16 +154,35 @@ zScoreNormalisation <- function(indicatorValues){
   return(zScore)
 }
 
-#Normalise the volatilitis base on the z scores
-normATRandVIX <- function(normindicator, normVIXs) {
-  combinedScores <- list()
-  
-  #average and combine both atr and vix
-  combinedScores <- c()
-  for (i in seq_along(normindicator)) {
-    combinedScore <- (normindicator[[i]] + normVIXs[[i]]) / 2
-    combinedScores <- c(combinedScores, combinedScore)
+normATRandVIX <- function(normATRs, normVIXs) {
+  if (!inherits(normATRs, "xts") || !inherits(normVIXs, "xts")) {
+    stop("Both normATRs and normVIXs must be xts objects.")
   }
-  normalisedScores <- zScoreNormalisation(combinedScores)
-  return(normalisedScores)
+  
+  # Ensure both xts objects have the same index (dates)
+  if (!all(index(normATRs) == index(normVIXs))) {
+    stop("The indices (dates) of normATRs and normVIXs do not match.")
+  }
+  
+  # Average and combine both ATR and VIX
+  combinedScores <- (normATRs + normVIXs) / 2
+  
+  return(combinedScores)
 }
+
+#Call with:
+# Loop through each time series and generate a PDF plot
+#monthlyVolatility <- list()
+#for (i in seq_along(inSampleDataList)) {
+#  series <- inSampleDataList[[i]]
+#  currentATR <- weeklyATRs[[i]]
+#  currentVIX <- weeklyVIXs[[i]]
+#  normalisedATRs <- zScoreNormalisation(calculateATRForRangeXTS(series,7))
+#  normalisedVIXs <- zScoreNormalisation(calculateVIXForRangeXTS(series, 7))
+#  combinedATRVIX <- normATRandVIX(normalisedATRs, normalisedVIXs)
+  # Print any additional information you need
+#  volatiltiyAnalysis <- analyseMonthlyVolatility(series, 7)
+#  monthlyVolatility[[length(monthlyVolatility) + 1]] <- volatiltiyAnalysis
+#}
+#print(monthlyVolatility)
+

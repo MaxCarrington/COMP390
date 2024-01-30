@@ -14,7 +14,7 @@ source('./Indicators/hurst_exponent.R')
 source('./Indicators/half_life_of_mean_reversion.R')
 source('./Indicators/variance_ratio_test.R')
 
-meanRevSuitable <- function(series, index){
+getSeriesMeanRevStats <- function(series, index){
   thresh <- 0.05
   score <- 0
   consistencyScore <- 0
@@ -22,7 +22,6 @@ meanRevSuitable <- function(series, index){
                            RndWalk= performVarianceRatioTest(series$Close), 
                            UnitRoot = performADFTest(series$Close)$p.value, 
                            HalfLife= calculateHalfLife(series$Close))
-  
   if(meanRevattributes$HVal < 0.5){
     score <- score + 20
     consistencyScore <- consistencyScore + 1
@@ -53,6 +52,18 @@ meanRevSuitable <- function(series, index){
                             )
   return(meanRevertingInfo)
 }
+getMeanRevSeries <- function(seriesList){
+  index <- 1
+  suitableSeries <- lapply(seriesList, function(series){
+    seriesStats <- getSeriesMeanRevStats(series, index)
+    index <- index + 1
+    if (seriesStats$meanRevScore >= 20){
+      return(seriesStats)
+    }
+  })
+  filteredSeries <- Filter(Negate(is.null), suitableSeries)
+  return(filteredSeries)
+  }
 
 calcHalfLifeScore <- function(halfLife){
   score <- switch(halfLife,
@@ -68,10 +79,10 @@ determineHalfLife <- function(attributes){
   if(attributes$HalfLife$HalfLife_WithIntercept < 15 || attributes$HalfLife$HalfLife_NoIntercept < 15){
     duration <- "SHORT"
   }
-  else if(attributes$HalfLife$HalfLife_WithIntercept < 30 || attributes$HalfLife$HalfLife_NoIntercept < 30){
+  else if(attributes$HalfLife$HalfLife_WithIntercept < 32 || attributes$HalfLife$HalfLife_NoIntercept < 32){
     duration <- "MEDIUM"
   }
-  else if(attributes$HalfLife$HalfLife_WithIntercept < 50 || attributes$HalfLife$HalfLife_NoIntercept < 50){
+  else if(attributes$HalfLife$HalfLife_WithIntercept < 52 || attributes$HalfLife$HalfLife_NoIntercept < 52){
     duration <- "LONG"
   }
   else{
@@ -79,18 +90,14 @@ determineHalfLife <- function(attributes){
   }
   return(duration)
 }
-#How to call:
-#meanRevertingSeries <- list()
-#for (i in 1:length(inSampleDataList)) {
-  #series <- meanRevSuitable(inSampleDataList[[i]]$Close, i)
-  #if (series$meanRevScore >= 20) {
-    #print("\n")
-    #print("\n")
-    #print(series)
-    #meanRevertingSeries <- c(meanRevertingSeries, series)
-    #cat("Series Index: ", series$seriesIndex, "\n")
-    #cat("Series Score: ", series$meanRevScore, "\n", "\n")
+
+#meanRevSuitableList <- list()
+#for(i in 1:10){
+  #seriesMeanRevStats <- getSeriesMeanRevStats(inSampleDataList[[1]], i)
+  #if(getMeanRevSeries(seriesMeanRevStats)){
+    #meanRevSuitableList[[length(meanRevSuitableList) + 1]] <- seriesMeanRevStats
   #}
 #}
+#print(length(meanRevSuitableList))
 
 
