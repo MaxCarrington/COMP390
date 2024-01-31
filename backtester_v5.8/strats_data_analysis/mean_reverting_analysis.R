@@ -18,34 +18,39 @@ getSeriesMeanRevStats <- function(series, index){
   thresh <- 0.05
   score <- 0
   consistencyScore <- 0
-  meanRevattributes <- list(HVal =calculateHurstExponent(series$Close), 
-                           RndWalk= performVarianceRatioTest(series$Close), 
-                           UnitRoot = performADFTest(series$Close)$p.value, 
-                           HalfLife= calculateHalfLife(series$Close))
-  if(meanRevattributes$HVal < 0.5){
+  he = calculateHurstExponent(series$Close)
+  vr = performVarianceRatioTest(series$Close)
+  ur = performADFTest(series$Close)$p.value
+  hl = calculateHalfLife(series$Close) 
+  meanRevAttributes <- list(HVal = he,
+                            RndWalk = vr,
+                            UnitRoot = ur,
+                            HalfLife = hl
+                            )                         
+  if(meanRevAttributes$HVal < 0.5){
     score <- score + 20
     consistencyScore <- consistencyScore + 1
   }
-  else if(meanRevattributes$HVal > 0.45 && meanRevattributes$HVal < 0.55){
+  else if(meanRevAttributes$HVal > 0.45 && meanRevAttributes$HVal < 0.55){
     score <- score + 5
   }
-  if (length(meanRevattributes$RndWalk) > 0){
+  if (length(meanRevAttributes$RndWalk) > 0){
     score <- score + 15
     consistencyScore <- consistencyScore + 1
   }
-  if(!is.na(meanRevattributes$UnitRoot) && meanRevattributes$UnitRoot < 0.05){
+  if(!is.na(meanRevAttributes$UnitRoot) && meanRevAttributes$UnitRoot < 0.05){
     score <- score + 20
     consistencyScore <- consistencyScore + 1
   }
   
-  halfLifeDuration <- determineHalfLife(meanRevattributes)
+  halfLifeDuration <- determineHalfLife(meanRevAttributes)
   halfLifeScore <- calcHalfLifeScore(halfLifeDuration)
   score <- score + halfLifeScore
   
   if(score > 0 && consistencyScore == 3)
     score <- score + 20
   
-  meanRevertingInfo <- list(attributes = meanRevattributes,
+  meanRevertingInfo <- list(attributes = meanRevAttributes,
                             meanRevScore = score,
                             halfLifeDuration = halfLifeDuration,
                             seriesIndex = index

@@ -8,6 +8,8 @@ source('./plotting/plot_code/plot_volatility.R')
 source('./plotting/plot_code/plot_prices.R')
 source('./strats_data_analysis/mean_reverting_analysis.R')
 source('./strats_data_analysis/volatility_analysis.R')
+source('./strats_data_analysis/momentum_analysis.R')
+source('./plotting/plot_code/vector_plot.R')
 # load data
 dataList <- getData(directory="PART1")
 # strategy will be passed in as a command line argument from jenkins
@@ -62,7 +64,28 @@ weeklyVIXs <- lapply(inSampleDataList, function(series) {
   calculateVIXForRangeXTS(series, lookbackSizes$weekly)
 })
 
+meanRevSuitableList <- list()
+for(i in 1:10){
+ seriesMeanRevStats <- getSeriesMeanRevStats(inSampleDataList[[i]], i)
+  if(seriesMeanRevStats$meanRevScore >= 20){
+   meanRevSuitableList[[length(meanRevSuitableList) + 1]] <- seriesMeanRevStats
+ }
+}
+print(meanRevSuitableList)
 
+windowSize <- 30 #Optimise this
+correlations <- list(correlation = list(),
+                     p.value = 0)
+# Initialize correlations list
+correlations <- list()
+correlations <- lapply(inSampleDataList, function(series) {
+  
+  rollingCorr <- calculateRollingCorrelations(series, windowSize)
+  pValues <- calculateCorrelationPValues(rollingCorr, windowSize)
+  
+  tempResult <- list(correlation = rollingCorr, p.value = pValues)
+  return(tempResult)
+})
 
 
 

@@ -14,10 +14,10 @@ analyseMonthlyVolatility <- function(series, lookback){
   #Calculate the fortnightly indicator and weeklyVIXs
   #Lookback should be 7
   #Pass in weeklyATR/weeklyVIX
-  normalisedATRs <- zScoreNormalisation(calculateATRForRangeXTS(series,lookback))
-  normalisedVIXs <- zScoreNormalisation(calculateVIXForRangeXTS(series, lookback))
+  standardisedATRs <- zScoreStandardisation(calculateATRForRangeXTS(series,lookback))
+  standardisedVIXs <- zScoreStandardisation(calculateVIXForRangeXTS(series, lookback))
   
-  combinedATRVIX <- normATRandVIX(normalisedATRs, normalisedVIXs)
+  combinedATRVIX <- stdATRandVIX(standardisedATRs, standardisedVIXs)
   
   volatilityClassifications <- classifyVolatility(combinedATRVIX)
   
@@ -147,14 +147,14 @@ combinedVolatilityThreshs <- function(combinedATRVIX){
   return(volatilityPeriods)
 }
 #Compute mean and standard deviation for each list, and apply the zScore forumla 
-zScoreNormalisation <- function(indicatorValues){
+zScoreStandardisation <- function(indicatorValues){
   mean <- mean(indicatorValues, na.rm = TRUE)
   stdDev <- stats::sd(indicatorValues, na.rm = TRUE)
   zScore <- (indicatorValues - mean) /stdDev
   return(zScore)
 }
 
-normATRandVIX <- function(normATRs, normVIXs) {
+stdATRandVIX <- function(normATRs, normVIXs) {
   if (!inherits(normATRs, "xts") || !inherits(normVIXs, "xts")) {
     stop("Both normATRs and normVIXs must be xts objects.")
   }
@@ -177,9 +177,9 @@ normATRandVIX <- function(normATRs, normVIXs) {
 #  series <- inSampleDataList[[i]]
 #  currentATR <- weeklyATRs[[i]]
 #  currentVIX <- weeklyVIXs[[i]]
-#  normalisedATRs <- zScoreNormalisation(calculateATRForRangeXTS(series,7))
-#  normalisedVIXs <- zScoreNormalisation(calculateVIXForRangeXTS(series, 7))
-#  combinedATRVIX <- normATRandVIX(normalisedATRs, normalisedVIXs)
+#  standardisedATRs <- zScoreStandardisation(calculateATRForRangeXTS(series,7))
+#  standardisedVIXs <- zScoreStandardisation(calculateVIXForRangeXTS(series, 7))
+#  combinedATRVIX <- stdATRandVIX(standardisedATRs, standardisedVIXs)
   # Print any additional information you need
 #  volatiltiyAnalysis <- analyseMonthlyVolatility(series, 7)
 #  monthlyVolatility[[length(monthlyVolatility) + 1]] <- volatiltiyAnalysis
