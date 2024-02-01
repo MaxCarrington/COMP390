@@ -69,7 +69,7 @@ series <- inSampleDataList[[1]]
 windowSize <- 30
 threshold <- 0.85
 volIncWithTrend(series, windowSize)
-
+print("Hello")
 highLiq <- lapply(inSampleDataList, function(x){
   correlation <- combinedLiquidityAnalysis(x, windowSize, threshold, windowSize)
 })
