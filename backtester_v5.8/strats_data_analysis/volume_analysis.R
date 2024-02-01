@@ -64,11 +64,11 @@ calculatePreviousMeanEMA <- function(series, windowSize, startPeriodDate) {
 # For momentum, analyze increasing volume trends alongside price increases.
 volIncWithTrend <- function(series, windowSize){
   # Exponentially Weighted Moving Average of the trading volume
-  ewmaVol <- calculateEWMA(series$Volume, windowSize)
+  ewmaVol <- TTR::EMA(series$Volume, windowSize)
   
   # Detect price increases and calculate EWMA for price increases
   priceIncreases <- detectPriceIncrease(series$Close)
-  ewmaPriceInc <- calculateEWMA(priceIncreases, windowSize)
+  ewmaPriceInc <- TTR::EMA(priceIncreases, windowSize)
   
   # Ensure lengths match for correlation calculation
   minLength <- min(length(ewmaVol), length(ewmaPriceInc))
