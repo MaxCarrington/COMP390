@@ -1,10 +1,8 @@
 source('./plotting/plot_code/vector_plot.R')
-library(quantmod)
+library(xts)
+library(zoo)
 library(TTR)
-if (!requireNamespace("TTR", quietly = TRUE)) {
-  # If not installed, install the package
-  install.packages("TTR")
-}
+library(quantmod)
 # Determines if volume spikes are correlated with mean reversion
 volMRCorrelation <- function(series, windowSize, threshold) {
   corScoreValue <- 1
