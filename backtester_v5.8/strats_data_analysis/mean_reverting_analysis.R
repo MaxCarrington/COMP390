@@ -98,11 +98,12 @@ determineHalfLife <- function(attributes){
 
 #meanRevSuitableList <- list()
 #for(i in 1:10){
-  #seriesMeanRevStats <- getSeriesMeanRevStats(inSampleDataList[[1]], i)
-  #if(getMeanRevSeries(seriesMeanRevStats)){
+  #seriesMeanRevStats <- getSeriesMeanRevStats(inSampleDataList[[i]], i)
+  #if(seriesMeanRevStats$meanRevScore >= 20){
     #meanRevSuitableList[[length(meanRevSuitableList) + 1]] <- seriesMeanRevStats
   #}
 #}
-#print(length(meanRevSuitableList))
+#print(meanRevSuitableList)
+
 
 

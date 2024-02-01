@@ -10,6 +10,7 @@ source('./strats_data_analysis/mean_reverting_analysis.R')
 source('./strats_data_analysis/volatility_analysis.R')
 source('./strats_data_analysis/momentum_analysis.R')
 source('./plotting/plot_code/vector_plot.R')
+source('./strats_data_analysis/volume_analysis.R')
 # load data
 dataList <- getData(directory="PART1")
 # strategy will be passed in as a command line argument from jenkins
@@ -55,6 +56,7 @@ lookbackSizes <- list(weekly = 7,
                      allInSampDays = inSampDays
 )
 
+
 # Calculates the VIX for every week over the in-sample data, for each time series
 weeklyATRs <- lapply(inSampleDataList, function(series) {
   calculateATRForRangeXTS(series, lookbackSizes$weekly)
@@ -63,34 +65,18 @@ weeklyATRs <- lapply(inSampleDataList, function(series) {
 weeklyVIXs <- lapply(inSampleDataList, function(series) {
   calculateVIXForRangeXTS(series, lookbackSizes$weekly)
 })
+series <- inSampleDataList[[1]]
+windowSize <- 30
+threshold <- 0.85
+volIncWithTrend(series, windowSize)
 
-meanRevSuitableList <- list()
-for(i in 1:10){
- seriesMeanRevStats <- getSeriesMeanRevStats(inSampleDataList[[i]], i)
-  if(seriesMeanRevStats$meanRevScore >= 20){
-   meanRevSuitableList[[length(meanRevSuitableList) + 1]] <- seriesMeanRevStats
- }
-}
-print(meanRevSuitableList)
-
-windowSize <- 30 #Optimise this
-correlations <- list(correlation = list(),
-                     p.value = 0)
-# Initialize correlations list
-correlations <- list()
-correlations <- lapply(inSampleDataList, function(series) {
-  
-  rollingCorr <- calculateRollingCorrelations(series, windowSize)
-  pValues <- calculateCorrelationPValues(rollingCorr, windowSize)
-  
-  tempResult <- list(correlation = rollingCorr, p.value = pValues)
-  return(tempResult)
+highLiq <- lapply(inSampleDataList, function(x){
+  correlation <- combinedLiquidityAnalysis(x, windowSize, threshold, windowSize)
 })
 
 
 
-
-
+# Now, you can further analyze or plot these liquidity indicators alongside your volume analysis.
 
 
 

@@ -14,3 +14,24 @@ plotCorrelations <- function(correlations, title = "Rolling Correlations") {
   par(mfrow=c(1, 1))  # Reset the plot layout to a single pane
   dev.off()
 }
+plotVolumeTrendAnalysis <- function(rollingAverageVol, rollAvgPriceInc, correlation){
+  par(mfrow=c(3, 1), mar=c(4, 4, 2, 1))  # 3 rows, 1 column, adjust margins
+  
+  # Plot 1: Rolling Average of Trading Volume (Barplot)
+  barplot(rollingAverageVol, main="Rolling Average of Trading Volume", xlab="", ylab="Volume")
+  
+  # Plot 2: Rolling Mean of Price Increases (Line plot)
+  plot(rollAvgPriceInc, type="l", main="Rolling Mean of Price Increases", xlab="", ylab="Mean Increase")
+  
+  # Plot 3: Correlation Scatterplot
+  plot(rollingAverageVol, rollAvgPriceInc, main="Correlation between Volume and Price Increases",
+       xlab="Volume", ylab="Mean Increase")
+  # Round the correlation values to 3 decimal places
+  roundedCorrelation <- round(correlation, 3)
+  
+  # Label points with rounded correlation values
+  text(rollingAverageVol, rollAvgPriceInc, labels=roundedCorrelation, pos=3)
+  
+  # Reset the plot layout to a single pane
+  par(mfrow=c(1, 1))
+}

@@ -31,7 +31,7 @@ checkStationarity <- function(series){
   return(isStationary)
 }
 
-#Calulates the correlation between past and future returns, using a window for the past returns and a rolling window for the future returns
+#Calculates the correlation between past and future returns, using a window for the past returns and a rolling window for the future returns
 calculateRollingCorrelations <- function(series, windowSize) {
   rollingCorrelations <- numeric(0)
   
@@ -71,4 +71,34 @@ calculateCorrelationPValues <- function(correlations, n) {
 adjustPValues <- function(p_values) {
   adjusted_p_values <- p.adjust(p_values, method = "bonferroni")
   return(adjusted_p_values)
+}
+identifySignificantSeries <- function(correlationsList, significanceLevel = 0.05) {
+  significantSeries <- list()
+  
+  # Loop through each series in the correlations list
+  for (i in seq_along(correlationsList)) {
+    seriesData <- correlationsList[[i]]
+    correlations <- seriesData$correlation
+    pValues <- seriesData$p.value
+    
+    # Determine if the series has significant correlations
+    significantIndices <- which(pValues < significanceLevel)
+    
+    # Filter for significant correlations
+    significantCorrelations <- correlations[significantIndices]
+    
+    # Optional: Further filter based on correlation strength if needed
+    # For example, you might want correlations stronger than a certain threshold
+    
+    # If there are any significant correlations, add to the significantSeries list
+    if (length(significantIndices) > 0) {
+      significantSeries[[length(significantSeries) + 1]] <- list(
+        seriesIndex = i,
+        significantCorrelations = significantCorrelations,
+        significantIndices = significantIndices
+      )
+    }
+  }
+  
+  return(significantSeries)
 }
