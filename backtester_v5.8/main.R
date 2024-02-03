@@ -6,11 +6,8 @@ source('./example_strategies.R');
 source('./risk_management/position_size_calc.R')
 source('./plotting/plot_code/plot_volatility.R')
 source('./plotting/plot_code/plot_prices.R')
-source('./strats_data_analysis/mean_reverting_analysis.R')
-source('./strats_data_analysis/volatility_analysis.R')
-source('./strats_data_analysis/momentum_analysis.R')
+source('./strats_data_analysis/master_analysis.R')
 source('./plotting/plot_code/vector_plot.R')
-source('./strats_data_analysis/volume_analysis.R')
 # load data
 dataList <- getData(directory="PART1")
 # strategy will be passed in as a command line argument from jenkins
@@ -65,13 +62,59 @@ weeklyATRs <- lapply(inSampleDataList, function(series) {
 weeklyVIXs <- lapply(inSampleDataList, function(series) {
   calculateVIXForRangeXTS(series, lookbackSizes$weekly)
 })
-series <- inSampleDataList[[1]]
-windowSize <- 30
-threshold <- 0.85
-volIncWithTrend(series, windowSize)
-highLiq <- lapply(inSampleDataList, function(x){
-  correlation <- combinedLiquidityAnalysis(x, windowSize, threshold, windowSize)
-})
+strategies <- list(meanReversion = "Mean-Reversion",
+                   momentum ="Momentum",
+                   marketMaking = "Market-Making")
+index <- 2
+lookback <- 7
+volThresh <- 0.85
+volWSize <- 30
+pValueThreshMR <- 0.95
+momentumWSize <- 30
+pValueThreshMom <- 0.95
+
+momentumLenThresh <- 0.90
+seriesAnalysisInfo <- list()
+
+# Initialize an empty list to hold the analysis and strategy for each series
+seriesAnalysisInfo <- list()
+
+# Loop through each series in the dataset
+for(i in 1:length(inSampleDataList)) {
+  series <- inSampleDataList[[i]]
+  
+  # Analyze the series for various factors
+  volatilityStats <- analyseVolatility(series, lookback)
+  volumeStats <- analyseVolume(series, lookback, volWSize, volThresh)
+  momentumStats <- analyseMomentum(series, momentumWSize, pValueThreshMom, momentumLenThresh)
+  mrStats <- analyseMR(series, i, pValueThreshMR)
+  
+  # Determine the strategy based on the analysis
+  strategy <- "None" # Default strategy
+  if(mrStats$meanRevScore >= 20 && momentumStats$stratType == strategies$meanReversion) {
+    strategy <- strategies$meanReversion
+  } else if(momentumStats$stratType == strategies$momentum) {
+    strategy <- strategies$momentum
+  } else if(volatilityStats$seriesVol == "Non-Volatile") {
+    strategy <- strategies$marketMaking
+  }
+  # Append the analysis and determined strategy to the list
+  seriesAnalysisInfo[[length(seriesAnalysisInfo) + 1]] <- list(
+    volatility = volatilityStats,
+    volume = volumeStats,
+    momentum = momentumStats,
+    meanReversion = mrStats,
+    index = i,
+    strategy = strategy # Include the strategy directly
+  )
+}
+
+
+
+#seriesCharacteristics <- lapply(inSampleDataList, function(series){
+  #analyseDataForStrategies(series, index, lookback)
+  #index <- index + 1
+#})
 
 
 

@@ -10,7 +10,7 @@ if (!require(tseries))
   library(vrtest)
 # Performs an ADF test on a given time series
 performADFTest <- function(series) {
-  testResult <- adf.test(series, alternative = "stationary")
+  testResult <- adf.test(na.omit(series), alternative = "stationary")
   return(testResult)
 }
 

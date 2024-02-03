@@ -14,35 +14,36 @@ source('./Indicators/hurst_exponent.R')
 source('./Indicators/half_life_of_mean_reversion.R')
 source('./Indicators/variance_ratio_test.R')
 
-getSeriesMeanRevStats <- function(series, index){
-  thresh <- 0.05
+getSeriesMeanRevStats <- function(series, index, threshold){
+  
   score <- 0
   consistencyScore <- 0
-  he = calculateHurstExponent(series$Close)
-  vr = performVarianceRatioTest(series$Close)
-  ur = performADFTest(series$Close)$p.value
-  hl = calculateHalfLife(series$Close) 
-  meanRevAttributes <- list(HVal = he,
-                            RndWalk = vr,
-                            UnitRoot = ur,
-                            HalfLife = hl
-                            )                         
-  if(meanRevAttributes$HVal < 0.5){
+  
+  HVal <- calculateHurstExponent(series$Close)
+  RndWalk <- performVarianceRatioTest(series$Close)
+  UnitRoot <- performADFTest(series$Close)
+  HalfLife <- calculateHalfLife(series$Close) 
+  
+  if(HVal < 0.5){
     score <- score + 20
     consistencyScore <- consistencyScore + 1
   }
-  else if(meanRevAttributes$HVal > 0.45 && meanRevAttributes$HVal < 0.55){
+  else if(HVal > 0.45 && HVal < 0.55){
     score <- score + 5
   }
-  if (length(meanRevAttributes$RndWalk) > 0){
+  if (length(RndWalk) > 0){
     score <- score + 15
     consistencyScore <- consistencyScore + 1
   }
-  if(!is.na(meanRevAttributes$UnitRoot) && meanRevAttributes$UnitRoot < 0.05){
+  if(!is.na(UnitRoot$p.value) && UnitRoot$p.value < threshold){
     score <- score + 20
     consistencyScore <- consistencyScore + 1
   }
-  
+  meanRevAttributes <- list(HVal = HVal,
+                            RndWalk = RndWalk,
+                            UnitRoot = UnitRoot,
+                            HalfLife = HalfLife
+  )       
   halfLifeDuration <- determineHalfLife(meanRevAttributes)
   halfLifeScore <- calcHalfLifeScore(halfLifeDuration)
   score <- score + halfLifeScore

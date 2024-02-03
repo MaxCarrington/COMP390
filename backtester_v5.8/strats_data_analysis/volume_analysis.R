@@ -1,8 +1,4 @@
 source('./plotting/plot_code/vector_plot.R')
-library(xts)
-library(zoo)
-library(TTR)
-library(quantmod)
 # Determines if volume spikes are correlated with mean reversion
 volMRCorrelation <- function(series, windowSize, threshold) {
   corScoreValue <- 1
@@ -41,9 +37,6 @@ scoreSpike <- function(lastPrice, meanRevertPrice, threshold, corScoreValue, noC
     return(noCorScoreValue)  # Not correlated
   }
 }
-
-
-
 
 calculatePreviousMeanEMA <- function(series, windowSize, startPeriodDate) {
   # Extract the series up to the start period date
@@ -106,17 +99,13 @@ library(TTR)  # For SMA, EMA functions
 combinedLiquidityAnalysis <- function(series, volLookback, liquidityThresh, windowSize) {
   # Step 1: Identify high volume periods
   highVolumePeriods <- highLiquidityPeriods(series, volLookback, liquidityThresh)
-  
   # Prepare series data for liquidity estimation
   highVolSeries <- series[highVolumePeriods, ]
-  
   # Step 2: Estimate liquidity in high volume periods
   liquidityIndicators <- estimateLiquidity(highVolSeries, windowSize)
-  
   # Combine information from both steps
   # Assuming we're interested in periods identified as high liquidity within high volume periods
   finalSelection <- highVolumePeriods[!is.na(liquidityIndicators$highLiquidity == 1)]
-  
   return(list(
     highVolumePeriods = highVolumePeriods,
     finalSelection = finalSelection,

@@ -10,32 +10,32 @@
 source('./Indicators/average_true_range.R')
 source('./Indicators/volatility_index.R')
 
-analyseMonthlyVolatility <- function(series, lookback){
+analyseMonthlyVol <- function(series, lookback){
   #Calculate the fortnightly indicator and weeklyVIXs
   #Lookback should be 7
   #Pass in weeklyATR/weeklyVIX
-  standardisedATRs <- zScoreStandardisation(calculateATRForRangeXTS(series,lookback))
+  
+  standardisedATRs <- zScoreStandardisation(calculateATRForRangeXTS(series, lookback))
   standardisedVIXs <- zScoreStandardisation(calculateVIXForRangeXTS(series, lookback))
   
   combinedATRVIX <- stdATRandVIX(standardisedATRs, standardisedVIXs)
-  
   volatilityClassifications <- classifyVolatility(combinedATRVIX)
   
-  numberOfMonths <- floor(length(inSampleDataList[[1]]$Close) / 7) /4
+  numberOfMonths <- floor(length(series$Close) / 7) /4
   endOfMonthIndex <- 4
   startOfMonthIndex <- 1
-  
-  overallVolatility <- c()
+  monthlyVol <- c()
   for(i in 1:numberOfMonths){
-    weeks <- determineSeriesVolatility(volatilityClassifications[startOfMonthIndex:endOfMonthIndex])
-    overallVolatility <- c(overallVolatility, weeks)
+    monthVol <- determineSeriesVolatility(volatilityClassifications[startOfMonthIndex:endOfMonthIndex])
+    monthlyVol <- c(monthlyVol, monthVol)
     startOfMonthIndex <- endOfMonthIndex + 1
     endOfMonthIndex <- endOfMonthIndex + 4
   }
-  return(overallVolatility)
+  seriesVol <- analyseSeriesVol(monthlyVol)
+  return(list(monthlyVol = monthlyVol, seriesVol = seriesVol))
 }
 
-analyseSereiesVolatility <- function(monthlyVolatility){
+analyseSeriesVol <- function(monthlyVolatility){
   nonVolatile = "Non-Volatile"
   volatile = "Volatile"
   highlyVolatile = "Highly Volatile"
@@ -50,9 +50,8 @@ analyseSereiesVolatility <- function(monthlyVolatility){
   if(is.na(numNonVolatile)) numNonVolatile <- 0
   if(is.na(numVolatile)) numVolatile <- 0
   if(is.na(numHighVolatile)) numHighVolatile <- 0
-  print(frequencyTable)
   
-  if(numNonVolatile >= totalScores*0.70){
+  if(numNonVolatile >= totalScores*0.95){
     return(nonVolatile)
   }
   else if((numVolatile >= totalScores*0.20 && numVolatile <= totalScores*0.50) && numHighVolatile <= totalScores*0.10){
@@ -127,25 +126,7 @@ volThreshs <- function(indicator){
   }
   return(volatilityPeriods)
 }
-#Calculates combined ATR and VIX volatility threshold values based on the current time series to determine times of high, low, medium volatility
-combinedVolatilityThreshs <- function(combinedATRVIX){
-  volatilityPeriods <- c()
-  avgVol <- mean(combinedATRVIX)
-  sdVol <- sd(combinedATRVIX)
-  
-  for(i in seq_along(combinedATRVIX)){
-    if(combinedATRVIX[i] < avgVol + sdVol * 0.5){
-      volatilityPeriods <- c(volatilityPeriods, "Low")
-    } else if(combinedATRVIX[i] >= avgVol + sdVol * 0.5 && combinedATRVIX[i] < avgVol + sdVol * 1.5){
-      volatilityPeriods <- c(volatilityPeriods, "Medium")
-    } else if(combinedATRVIX[i] >= avgVol + sdVol * 1.5 && combinedATRVIX[i] < avgVol + sdVol * 2){
-      volatilityPeriods <- c(volatilityPeriods, "High")
-    } else {
-      volatilityPeriods <- c(volatilityPeriods, "Very High")
-    }
-  }
-  return(volatilityPeriods)
-}
+
 #Compute mean and standard deviation for each list, and apply the zScore forumla 
 zScoreStandardisation <- function(indicatorValues){
   mean <- mean(indicatorValues, na.rm = TRUE)
@@ -169,7 +150,6 @@ stdATRandVIX <- function(normATRs, normVIXs) {
   
   return(combinedScores)
 }
-
 #Call with:
 # Loop through each time series and generate a PDF plot
 #monthlyVolatility <- list()
@@ -180,8 +160,8 @@ stdATRandVIX <- function(normATRs, normVIXs) {
 #  standardisedATRs <- zScoreStandardisation(calculateATRForRangeXTS(series,7))
 #  standardisedVIXs <- zScoreStandardisation(calculateVIXForRangeXTS(series, 7))
 #  combinedATRVIX <- stdATRandVIX(standardisedATRs, standardisedVIXs)
-  # Print any additional information you need
-#  volatiltiyAnalysis <- analyseMonthlyVolatility(series, 7)
+# Print any additional information you need
+#  volatiltiyAnalysis <- analyseMonthlyVol(series, 7)
 #  monthlyVolatility[[length(monthlyVolatility) + 1]] <- volatiltiyAnalysis
 #}
 #print(monthlyVolatility)
