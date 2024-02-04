@@ -47,7 +47,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
            }
 
            else if (pos[params$series[i]] == -1) {# short signal today
-
+                
                 if (store$count[i] > 0) # last time we were long
                     store$count[i] == pos[params$series[i]] # == -1
                 else if (store$count[i] == -params$holdPeriod) { # reached holding period

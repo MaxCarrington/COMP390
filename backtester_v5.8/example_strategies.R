@@ -1,3 +1,4 @@
+source('./Indicators/half_life_of_mean_reversion.R')
 example_strategies <- c("fixed", 
                         "big_spender",
                         "bankrupt", 
@@ -28,7 +29,7 @@ example_params <- list(
                     "extreme_limit"=list(spreadPercentage=0.001,inventoryLimits=rep(10,10)),
                     "market_making"=NULL,
                     "momentum"=NULL,
-                    "mean_reverison"=NULL
+                    "mean_reversion"=list(stdDev=1.5, series = c(1,2,3,4,5,6,7,8,9,10), halfLives = c(), posSizes=rep(1,10))
                     )
 
 load_strategy <- function(strategy) {
