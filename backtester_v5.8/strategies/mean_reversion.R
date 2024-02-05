@@ -1,10 +1,7 @@
 
 # Mean reversion source file
 getOrders <- function(store, newRowList, currentPos, info, params) {
-  
   allzero  <- rep(0,length(newRowList)) # used for initializing vectors
-  cl <- newRowList[[params$series[1]]]$Close
-  halfLife <- params$halfLives[[params$series[1]]]$HalfLife_WithIntercept #68
   
 
   if (is.null(store))
@@ -13,20 +10,21 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   store <- updateStore(store, newRowList, params$series)    
   marketOrders <- -currentPos; pos <- allzero
   
-  #If we have enough periods have passed.
-  if (store$iter > halfLife) {
-    startIndex <-  store$iter - params$lookback
-    #Iterate through each suitable series.
-    for (i in 1:length(params$series)) {
+  #Iterate through each suitable series.
+  for (i in 1:length(params$series)) {
+    seriesIndex <- params$series[i]
+    halfLife <- params$halfLives[i]
+    #If we have enough periods have passed.
+    if (store$iter > halfLife) {
+      
+      halfLife <- params$halfLives[i] #
       cl <- newRowList[[params$series[i]]]$Close
       hlcPrices <- store$ohlcv[[params$series[i]]][, c("High", "Low", "Close")]
       bbands <- calculateBollingerBands(hlcPrices, halfLife, params$stdDev)
       if(cl < bbands[,"dn"]){
-        print("Strategy would place a buy order as OVERSOLD")
         pos[params$series[i]] <- params$posSizes[params$series[i]]
       }
       else if (cl < bbands[,"up"]){
-        print("Strategy would place a sell order as OVERBOUGHT")
         pos[params$series[i]] <- -params$posSizes[params$series[i]]
       }
       # check if we have been in trade too long
@@ -38,7 +36,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       
       if (pos[params$series[i]] == 1) {# long signal today 
         if (store$count[i] < 0) # last time we were short
-          store$count[i] == pos[params$series[i]] # == 1
+          store$count[i] = pos[params$series[i]] # == 1
         else if (store$count[i] == halfLife) { # reached holding period
           pos[params$series[i]] <- 0 # don't stay long
           store$count[i] <- 0 # reset count to 0
@@ -49,7 +47,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       
       else if (pos[params$series[i]] == -1) {# short signal today
         if (store$count[i] > 0) # last time we were long
-          store$count[i] == pos[params$series[i]] # == -1
+          store$count[i] = pos[params$series[i]] # == -1
         else if (store$count[i] == -halfLife) { # reached holding period
           pos[params$series[i]] <- 0 # don't stay short
           store$count[i] <- 0 # reset count to 0
@@ -60,24 +58,13 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       else
         store$count[i] <- 0 # reset count to 0
     }
-    marketOrders <- marketOrders + pos
-    #cat(formatC(store$count,2),'\t',formatC(pos,2),'\n')
-    #cat(formatC(pos,2),'\n')
-    return(list(store=store,marketOrders=marketOrders,
-                limitOrders1=allzero,limitPrices1=allzero,
-                limitOrders2=allzero,limitPrices2=allzero))
   }
-  
-  
-  
-  allzero  <- rep(0,length(newRowList)) # used for initializing vectors
-  
-  
-  return(list(store=store,marketOrders=allzero,
-              limitOrders1=allzero, 
-              limitPrices1=allzero,
-              limitOrders2=allzero,
-              limitPrices2=allzero))
+  marketOrders <- marketOrders + pos
+  #cat(formatC(store$count,2),'\t',formatC(pos,2),'\n')
+  #cat(formatC(pos,2),'\n')
+  return(list(store=store,marketOrders=marketOrders,
+              limitOrders1=allzero,limitPrices1=allzero,
+              limitOrders2=allzero,limitPrices2=allzero))
 }
 
 # Function to calculate Bollinger bands based on a lookback and standard deviation
