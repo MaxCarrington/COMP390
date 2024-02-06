@@ -38,9 +38,6 @@ outSampledataList <- lapply(dataList, function(x)
 strategies <- list(meanReversion = "Mean-Reversion",
                    momentum ="Momentum",
                    marketMaking = "Market-Making")
-
-meanRevSeriesIndexes <- c(); momentumSeriesIndexes <- c(); marketMakingSeriesIndexes <-c()
-
 index <- 2
 lookback <- 7
 volThresh <- 0.85
@@ -68,12 +65,10 @@ for(i in 1:length(inSampleDataList)) {
   }
   # Determine the strategy based on the analysis
   strategy <- "None" # Default strategy
-  if(mrStats$meanRevScore >= 25){
-    meanRevSeriesIndexes <- c(meanRevSeriesIndexes, i)
-    halfLives <- c(halfLives, mrStats$attributes$HalfLife$HalfLife_WithIntercept)
-    strategy <- strategies$meanReversion
-  } else if(momentumStats$stratType == strategies$momentum) {
+  if(momentumStats$stratType == strategies$momentum) {
     strategy <- strategies$momentum
+  }else if(mrStats$meanRevScore >= 40){
+    strategy <- strategies$meanReversion
   } else if(volatilityStats$seriesVol == "Non-Volatile") {
     strategy <- strategies$marketMaking
   }
@@ -88,13 +83,44 @@ for(i in 1:length(inSampleDataList)) {
   )
 }
 
-lookbackSizes <- list(weekly = 7, 
-                     fortnightly =14, 
-                     monthly = 30,
-                     allInSampDays = inSampDays
-)
-print(meanRevSeriesIndexes)
-print(halfLives)
+
+# Extract Mean-Reversion Series Indexes
+meanRevSeriesIndexes <- sapply(seriesAnalysisInfo, function(x){
+  if(x$strategy == "Mean-Reversion")
+    x$index
+  else
+    NA
+})
+meanRevSeriesIndexes <- na.omit(meanRevSeriesIndexes)
+attr(meanRevSeriesIndexes, "na.action") <- NULL
+
+# Get the corresponding half life for each mean reverting time series
+halfLives <- sapply(seriesAnalysisInfo, function(x){
+  if(x$strategy == "Mean-Reversion")
+    x$meanReversion$attributes$HalfLife$HalfLife_WithIntercept
+  else
+    NA
+})
+halfLives <- na.omit(halfLives)
+attr(halfLives, "na.action") <- NULL
+# Extract Momentum Series Indexes
+momentumSeriesIndexes <- sapply(seriesAnalysisInfo, function(x){
+  if(x$strategy == "Momentum")
+    x$index
+  else
+    NA
+})
+momentumSeriesIndexes <- na.omit(momentumSeriesIndexes)
+attr(momentumSeriesIndexes, "na.action") <- NULL
+# Extract Market-Making Series Indexes
+marketMakingSeriesIndexes <- sapply(seriesAnalysisInfo, function(x){
+  if(x$strategy == "Market-Making")
+    x$index
+  else
+    NA
+})
+marketMakingSeriesIndexes <- na.omit(marketMakingSeriesIndexes)
+attr(marketMakingSeriesIndexes, "na.action") <- NULL
 #Add check in
 if(tradingStrategy == "mean_reversion") {
   if(length(meanRevSeriesIndexes) > 0){
@@ -104,9 +130,21 @@ if(tradingStrategy == "mean_reversion") {
   else{
     cat("Mean reverison strategy can not run. No series are deemed suitable.", "\n")
   }
-  
+}else if(tradingStrategy == "momentum") {
+  if(length(momentumSeriesIndexes) > 0){
+    example_params[["momentum"]][["series"]] <- momentumSeriesIndexes
+  }
+  else{
+    cat("Momentum strategy can not run. No series are deemed suitable.", "\n")
+  }
+}else if(tradingStrategy == "market_making"){
+  if(length(momentumSeriesIndexes) > 0){
+    example_params[["market_making"]][["series"]] <- momentumSeriesIndexes
+  }
+  else{
+    cat("Momentum strategy can not run. No series are deemed suitable.", "\n")
+  }
 }
-
 
 load_strategy(tradingStrategy) # function from example_strategies.R
 
@@ -115,12 +153,8 @@ results <- backtest(inSampleDataList,getOrders,params,sMult)
 pfolioPnL <- plotResults(dataList,results,plotType='ggplot2')
 
 
-for (i in 1:length(results$pnlList)) {
-  cat("Time Series", i,":","\n")
-  cat("Final Cumulative PD ratio:", tail(results$pnlList[[i]]$CumPnL, 1), "\n")
-}
-cat("Final Account Balance:", last(results$netWorthList), "\n")
-
-#Print the final account balance
-#final_balance <- pfolioPnL$pfoliosPnL$CumPnL[nrow(pfolioPnL$pfoliosPnL)]
-#cat("Portfolio Profit and Loss: ", round(final_balance, digits=2), "\n")
+#for (i in 1:length(results$pnlList)) {
+  #cat("Time Series", i,":","\n")
+  #cat("Final Cumulative PD ratio:", tail(results$pnlList[[i]]$CumPnL, 1), "\n")
+#}
+#cat("Final Account Balance:", last(results$netWorthList), "\n")

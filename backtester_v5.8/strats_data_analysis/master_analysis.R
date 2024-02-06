@@ -4,6 +4,8 @@ source('./strats_data_analysis/volatility_analysis.R')
 source('./strats_data_analysis/momentum_analysis.R')
 source('./Indicators/average_true_range.R')
 source('./Indicators/volatility_index.R')
+source('./Indicators/variance_ratio_test.R')
+source('./Indicators/hurst_exponent.R')
 
 analyseVolatility <- function(series, lookback){
   return(analyseMonthlyVol(series, lookback))
@@ -28,9 +30,11 @@ analyseMomentum <- function(series, windowSize, pValueThresh, lengthThresh) {
   
   # Calculate rolling correlations with dates
   rollingCorrsWithDates <- calculateRollingCorrelationsWithDates(logReturns, windowSize)
-  suitableForStrat <- checkLenForMomentum(lengthThresh, rollingCorrsWithDates)
-  # Initialize an empty list to store significant correlations
-  
+  momentumStratIndication <- checkLenForMomentum(lengthThresh, rollingCorrsWithDates)
+  #Calculate the hurst exponent of the series. If H < 0.5, the series is mean reverting, if H > 0.5, series is trending, if H =0.5, Random walk
+  hurstExponent <- calculateHurstExponent(na.omit(toLogReturns(series$Close)))
+  vratio <- performVarianceRatioTest(series$Close)
+  suitableForStrat <- statisticallySuitable(momentumStratIndication, hurstExponent, vratio)
   return(list(correlation = rollingCorrsWithDates,
               stratType = suitableForStrat))
 }
@@ -42,6 +46,20 @@ checkLenForMomentum <- function(lengthThresh, correlations){
   }
   else if(numNegatives >= (length(correlations$correlation) * lengthThresh)){
     return("Mean-Reversion")
+  }
+  else{
+    return("None")
+  }
+}
+
+statisticallySuitable <- function(suitableForStrat, hurstExp, vratio){
+  if (any(is.na(vratio$Stats))) {
+    return("None")
+  }
+  else if(hurstExp < 0.5 && vratio$Stats$M2 < 1 && suitableForStrat == "Mean-Reversion"){
+    return("Mean-Reversion")
+  }else if(hurstExp > 0.5 && vratio$Stats$M2 > 1 && suitableForStrat == "Momentum"){
+    return("Momentum")
   }
   else{
     return("None")

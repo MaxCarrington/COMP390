@@ -11,37 +11,35 @@ if (!require(vrtest))
   install.packages("vrtest")
   library(vrtest)
 
-# Variance Ratio Test Function
-performVarianceRatioTest <- function(series, lags = c( 2, 3, 5, 10), threshold=1.95) {
+performVarianceRatioTest <- function(series, lags = c(2, 3, 5, 10), significanceThreshold = 1.95) {
+  
   log_returns <- diff(log(series))
   log_returns <- na.omit(log_returns)  # Remove NAs
-  vr_test_results <- list()
+  
+  varRatioSignificant <- FALSE
+  significantLag <- NA
+  significantStats <- list()
   
   for (k in lags) {
     vr_test_result <- Lo.Mac(log_returns, k = k)
-    vr_test_results[[paste("Lag", k)]] <- vr_test_result
-  }
-  successfulResults <- list()
-  for (result in vr_test_results) {
-    if (abs(result$Stats[[1]]) >= threshold) {
-      successfulResults <- c(successfulResults, result$Stats[[1]])
-    }
-    if (abs(result$Stats[[2]]) >= threshold) {
-      successfulResults <- c(successfulResults, result$Stats[[2]])
+    # Extract M1 and M2 statistics
+    m1 <- vr_test_result$Stats[1]
+    m2 <- vr_test_result$Stats[2]
+    # Check if either statistic is significant
+    if (abs(m1) >= significanceThreshold || abs(m2) >= significanceThreshold) {
+      varRatioSignificant <- TRUE
+      significantLag <- k
+      significantStats <- list(M1 = m1, M2 = m2)
+      break  # Exit the loop if any lag shows a significant result
     }
   }
   
-  return(successfulResults)
+  if (varRatioSignificant) {
+    return(list(Significant = TRUE, Lag = significantLag, Stats = significantStats))
+  } else {
+    return(list(Significant = FALSE, Lag = NA, Stats = NA))
+  }
 }
 
-
-#Call with:
-#variance_ratio_results_close <- lapply(inSampleDataList, function(series){
-  #result <- performVarianceRatioTest(series$Close)
-#})
-#variance_ratio_results_open <- lapply(inSampleDataList, function(series){
-  #result <- performVarianceRatioTest(series$Open)
-#})
-#print(variance_ratio_results_close)
 
 #-------------------------------------------------------------------------------

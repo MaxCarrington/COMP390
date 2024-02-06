@@ -1,4 +1,4 @@
-#Add comment
+
 getOrders <- function(store, newRowList, currentPos, info, params) {
   
   allzero <- rep(0,length(newRowList)) 
