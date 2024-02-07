@@ -13,7 +13,7 @@ dataList <- getData(directory="PART1")
 # strategy will be passed in as a command line argument from jenkins
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 1) {
-  tradingStrategy <- "mean_reversion"
+  tradingStrategy <- "momentum"
 } else{
   tradingStrategy <- args[1]
 }
@@ -105,13 +105,38 @@ halfLives <- na.omit(halfLives)
 attr(halfLives, "na.action") <- NULL
 # Extract Momentum Series Indexes
 momentumSeriesIndexes <- sapply(seriesAnalysisInfo, function(x){
-  if(x$strategy == "Momentum")
+  if(x$strategy == "Momentum"){
     x$index
+  }
   else
     NA
 })
 momentumSeriesIndexes <- na.omit(momentumSeriesIndexes)
 attr(momentumSeriesIndexes, "na.action") <- NULL
+
+# Calculate optimal lookback periods for Momentum strategy
+momentumLookbacks <- lapply(seriesAnalysisInfo, function(x) {
+  if (x$strategy == "Momentum") {
+    return(x$momentum$seriesMomentum$optimalLookbackPeriod)
+  } else {
+    return(NULL)  # Return NULL for non-Momentum strategies
+  }
+})
+
+# Remove NULL values from the list
+momentumLookbacks <- momentumLookbacks[!sapply(momentumLookbacks, is.null)]
+
+# Calculate optimal holding periods for Momentum strategy
+momentumHoldings <- lapply(seriesAnalysisInfo, function(x) {
+  if (x$strategy == "Momentum") {
+    return(x$momentum$seriesMomentum$optimalHoldingPeriod)
+  } else {
+    return(NULL)  # Return NULL for non-Momentum strategies
+  }
+})
+
+# Remove NULL values from the list
+momentumHoldings <- momentumHoldings[!sapply(momentumHoldings, is.null)]
 # Extract Market-Making Series Indexes
 marketMakingSeriesIndexes <- sapply(seriesAnalysisInfo, function(x){
   if(x$strategy == "Market-Making")
@@ -133,6 +158,8 @@ if(tradingStrategy == "mean_reversion") {
 }else if(tradingStrategy == "momentum") {
   if(length(momentumSeriesIndexes) > 0){
     example_params[["momentum"]][["series"]] <- momentumSeriesIndexes
+    example_params[["momentum"]][["lookback"]] <- momentumLookbacks
+    example_params[["momentum"]][["holdingPeriod"]] <- momentumHoldings
   }
   else{
     cat("Momentum strategy can not run. No series are deemed suitable.", "\n")

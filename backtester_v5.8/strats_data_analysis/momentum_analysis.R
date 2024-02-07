@@ -42,10 +42,8 @@ calculateRollingCorrelationsWithDates <- function(series, windowSize, significan
     
     pastReturns <- na.omit(series$Close[pastStart:pastEnd])
     futureReturns <- na.omit(series$Close[futureStart:futureEnd])
-    
     # Ensure equal lengths before calculating correlation
     if (length(pastReturns) == length(futureReturns) && length(pastReturns) > 0) {
-      
       correlation <- cor(pastReturns, futureReturns)
       p_value <- calculatePValue(correlation, length(pastReturns))
       
@@ -97,4 +95,59 @@ identifySignificantSeries <- function(correlations, significanceLevel = 0.05, in
     }
   
   return(significantSeries)
+}
+findOptimalLookback <- function(correlations){
+  # Determine the range of lookback periods explored
+  lookbackPeriods <- unique(correlations$optimalLookbackPeriod)
+  
+  # Initialize variables to store the best lookback period and its average correlation
+  bestLookbackPeriod <- NA
+  highestAvgCorrelation <- -Inf # Start with the lowest possible correlation
+  
+  # Iterate through each lookback period to calculate its average positive correlation
+  for (lookback in lookbackPeriods) {
+    # Indices of correlations that used this lookback period
+    indices <- which(correlations$optimalLookbackPeriod == lookback & correlations$correlation > 0)
+    
+    # Calculate the average correlation for this lookback period
+    avgCorrelation <- mean(correlations$correlation[indices])
+    
+    # Update the best lookback period if this one has a higher average correlation
+    if(avgCorrelation > highestAvgCorrelation) {
+      bestLookbackPeriod <- lookback
+      highestAvgCorrelation <- avgCorrelation
+    }
+  }
+  
+  return(list(optimalLookbackPeriod = bestLookbackPeriod, avgCorrelation = highestAvgCorrelation))
+}
+
+
+
+checkLenForMomentum <- function(lengthThresh, correlations){
+  numPositives <- length(which(correlations$correlation > 0))
+  numNegatives <- length(which(correlations$correlation < 0))
+  if(numPositives >= (length(correlations$correlation) * lengthThresh)){
+    return("Momentum")
+  }
+  else if(numNegatives >= (length(correlations$correlation) * lengthThresh)){
+    return("Mean-Reversion")
+  }
+  else{
+    return("None")
+  }
+}
+
+statisticallySuitable <- function(suitableForStrat, hurstExp, vratio){
+  if (any(is.na(vratio$Stats))) {
+    return("None")
+  }
+  else if(hurstExp < 0.5 && vratio$Stats$M2 < 1 && suitableForStrat == "Mean-Reversion"){
+    return("Mean-Reversion")
+  }else if(hurstExp > 0.5 && vratio$Stats$M2 > 1 && suitableForStrat == "Momentum"){
+    return("Momentum")
+  }
+  else{
+    return("None")
+  }
 }

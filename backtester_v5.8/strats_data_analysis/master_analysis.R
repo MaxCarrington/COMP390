@@ -30,39 +30,22 @@ analyseMomentum <- function(series, windowSize, pValueThresh, lengthThresh) {
   
   # Calculate rolling correlations with dates
   rollingCorrsWithDates <- calculateRollingCorrelationsWithDates(logReturns, windowSize)
-  momentumStratIndication <- checkLenForMomentum(lengthThresh, rollingCorrsWithDates)
-  #Calculate the hurst exponent of the series. If H < 0.5, the series is mean reverting, if H > 0.5, series is trending, if H =0.5, Random walk
-  hurstExponent <- calculateHurstExponent(na.omit(toLogReturns(series$Close)))
-  vratio <- performVarianceRatioTest(series$Close)
-  suitableForStrat <- statisticallySuitable(momentumStratIndication, hurstExponent, vratio)
-  return(list(correlation = rollingCorrsWithDates,
-              stratType = suitableForStrat))
-}
-checkLenForMomentum <- function(lengthThresh, correlations){
-  numPositives <- length(which(correlations$correlation > 0))
-  numNegatives <- length(which(correlations$correlation < 0))
-  if(numPositives >= (length(correlations$correlation) * lengthThresh)){
-    return("Momentum")
-  }
-  else if(numNegatives >= (length(correlations$correlation) * lengthThresh)){
-    return("Mean-Reversion")
+  if(length(rollingCorrsWithDates$correlation) > 0){
+    momentumStratIndication <- checkLenForMomentum(lengthThresh, rollingCorrsWithDates)
+    #Calculate the hurst exponent of the series. If H < 0.5, the series is mean reverting, if H > 0.5, series is trending, if H =0.5, Random walk
+    seriesMomentum <- findLookbackHoldingPair(rollingCorrsWithDates)
+    hurstExponent <- calculateHurstExponent(na.omit(toLogReturns(series$Close)))
+    vratio <- performVarianceRatioTest(series$Close)
+    suitableForStrat <- statisticallySuitable(momentumStratIndication, hurstExponent, vratio)
+    return(list(correlation = rollingCorrsWithDates,
+                stratType = suitableForStrat,
+                seriesMomentum = seriesMomentum))
   }
   else{
-    return("None")
+    return(list(rollingCorrsWithDates = NA,
+    stratType = "None",
+    seriesMomentum = NA))
   }
-}
-
-statisticallySuitable <- function(suitableForStrat, hurstExp, vratio){
-  if (any(is.na(vratio$Stats))) {
-    return("None")
-  }
-  else if(hurstExp < 0.5 && vratio$Stats$M2 < 1 && suitableForStrat == "Mean-Reversion"){
-    return("Mean-Reversion")
-  }else if(hurstExp > 0.5 && vratio$Stats$M2 > 1 && suitableForStrat == "Momentum"){
-    return("Momentum")
-  }
-  else{
-    return("None")
-  }
+ 
 }
 

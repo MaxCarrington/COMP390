@@ -77,8 +77,6 @@ volIncWithTrend <- function(series, windowSize){
   # Extract correlation coefficient and p-value
   correlation <- testResult$estimate
   pValue <- testResult$p.value
-  # Plot
-  plotVolumeTrendAnalysis(ewmaVol, ewmaPriceInc, correlation)
   
   return(list(correlation = correlation, pValue = pValue))
 }
