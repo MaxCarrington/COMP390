@@ -133,7 +133,7 @@ setUpTradingParams <- function(tradingStrategy, strategies){
     
   }else if(tradingStrategy == "market_making"){
     mmkingInfo <- getMMakingInfo(strategies)
-    if(length(momentumSeriesIndexes) > 0){
+    if(length(mmkingInfo) > 0){
       example_params[["market_making"]][["series"]] <- mmkingInfo
     }
     else{
