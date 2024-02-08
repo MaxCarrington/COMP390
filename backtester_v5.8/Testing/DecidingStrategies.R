@@ -21,7 +21,6 @@ for(i in 1:length(inSampleDataList)) {
   
   # Analyze the series for various factors
   volatilityStats <- analyseVolatility(series, lookback)
-  volumeStats <- analyseVolume(series, lookback, volWSize, volThresh)
   momentumStats <- analyseMomentum(series, momentumWSize, pValueThreshMom, momentumLenThresh)
   mrStats <- analyseMR(series, i, pValueThreshMR)
   
@@ -29,10 +28,13 @@ for(i in 1:length(inSampleDataList)) {
   strategy <- "None" # Default strategy
   if(mrStats$meanRevScore >= 20 && momentumStats$stratType == strategies$meanReversion) {
     strategy <- strategies$meanReversion
+    volumeStats <- volMRCorrelation(series, windowSize, threshold) #rankingScore
   } else if(momentumStats$stratType == strategies$momentum) {
     strategy <- strategies$momentum
+    volumeStats < volIncWithTrend(series, windowSize) # volume increases with the trend 
   } else if(volatilityStats$seriesVol == "Non-Volatile") {
     strategy <- strategies$marketMaking
+    volumeStats <- combinedLiquidityAnalysis(series, lookback, threshold, windowSize) #liquidity analysis
   }
   # Append the analysis and determined strategy to the list
   seriesAnalysisInfo[[length(seriesAnalysisInfo) + 1]] <- list(

@@ -11,12 +11,6 @@ analyseVolatility <- function(series, lookback){
   return(analyseMonthlyVol(series, lookback))
 }
 
-analyseVolume <- function(series, lookback, windowSize, threshold){
-  volMRCorrelation(series, windowSize, threshold)
-  volIncWithTrend(series, windowSize)
-  combinedLiquidityAnalysis(series, lookback, threshold, windowSize)
-}
-
 analyseMR <- function(series, index, threshold){
   getSeriesMeanRevStats(series, index, threshold)
 }
@@ -40,5 +34,7 @@ analyseMomentum <- function(series, windowSize, pValueThresh, lengthThresh) {
     return(list(stratType = "None",
                 correlations = NA))
   }
- 
+}
+analyseMMaking <- function(series){
+  print("analyseMMaking")
 }

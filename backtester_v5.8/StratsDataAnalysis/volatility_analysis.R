@@ -150,6 +150,17 @@ stdATRandVIX <- function(normATRs, normVIXs) {
   
   return(combinedScores)
 }
+
+#Calculate the standard deviation of returns over a rolling window
+stdDevRollingWindow <- function(series, lookback){
+  returns <- diff(log(series$Close), lag = 1)
+  
+  #Calculate a rolling window of the standard devation of returns 
+  rollingStdDev <- runSD(returns, n = lookback)
+  # Return the rolling standard deviation series
+  return(rollingStdDev)
+  
+}
 #Call with:
 # Loop through each time series and generate a PDF plot
 #monthlyVolatility <- list()

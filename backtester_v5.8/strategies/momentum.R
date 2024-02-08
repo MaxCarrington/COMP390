@@ -46,12 +46,10 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
         #If the market is overbought and we are in an uptrend and todays open is higher than the previous days open
         
         if(overbought && upTrend && openCloseDiff > 0){
-          print("Overbought")
           pos[seriesIndex] <- 1 # Buy signal
           store$count[seriesIndex] <- store$count[seriesIndex] + 1 # Increment the holding count
         }
         else if(oversold && downTrend && openCloseDiff < 0){
-          print("Oversold")
           pos[seriesIndex] <- -1 #Sell signal
           store$count[seriesIndex] <- store$count[seriesIndex] - 1 # Decrement the holding count
         } else{
