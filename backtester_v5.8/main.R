@@ -50,8 +50,8 @@ results <- backtest(inSampleDataList,getOrders,params,sMult)
 pfolioPnL <- plotResults(dataList,results,plotType='ggplot2')
 
 
-#for (i in 1:length(results$pnlList)) {
-  #cat("Time Series", i,":","\n")
-  #cat("Final Cumulative PD ratio:", tail(results$pnlList[[i]]$CumPnL, 1), "\n")
-#}
-#cat("Final Account Balance:", last(results$netWorthList), "\n")
+for (i in 1:length(results$pnlList)) {
+  cat("Time Series", i,":","\n")
+  cat("Final Cumulative PD ratio:", tail(results$pnlList[[i]]$CumPnL, 1), "\n")
+}
+cat("Final Account Balance:", last(results$netWorthList), "\n")
