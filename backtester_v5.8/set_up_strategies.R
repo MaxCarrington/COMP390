@@ -134,7 +134,7 @@ setUpTradingParams <- function(tradingStrategy, strategies){
   }else if(tradingStrategy == "market_making"){
     mmkingInfo <- getMMakingInfo(strategies)
     if(length(momentumSeriesIndexes) > 0){
-      example_params[["market_making"]][["series"]] <- momentumSeriesIndexes
+      example_params[["market_making"]][["series"]] <- mmkingInfo
     }
     else{
       cat("Momentum strategy can not run. No series are deemed suitable.", "\n")
