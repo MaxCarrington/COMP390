@@ -1,4 +1,4 @@
-source('./plotting/plot_code/vector_plot.R')
+source('./Plot/vector_plot.R')
 # Determines if volume spikes are correlated with mean reversion
 volMRCorrelation <- function(series, windowSize, threshold) {
   corScoreValue <- 1

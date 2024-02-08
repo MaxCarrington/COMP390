@@ -28,12 +28,12 @@ example_params <- list(
                     "simple_limit"=list(spreadPercentage=0.001,inventoryLimits=rep(10,10)),
                     "extreme_limit"=list(spreadPercentage=0.001,inventoryLimits=rep(10,10)),
                     "market_making"=list(series = c()),
-                    "momentum"=list(series = c(), lookback = c(), holdingPeriod = c(),rsiLookback = 15, emaLookback = 15, 
-                                    smaLookback = 15, wmaLookback = 15, maThreshold = 0.7, overboughtThresh = 60, oversoldThresh = 40, maType = "SMA"),
+                    "momentum"=list(series = c(), lookback = c(), holdingPeriod = c(),rsiLookback = 30, emaLookback = 30, 
+                                    smaLookback = 30, wmaLookback = 30, maThreshold = 0.7, overboughtThresh = 60, oversoldThresh = 40, maType = "SMA"),
                     "mean_reversion"=list(stdDev=2, series = c(), halfLives = c(), posSizes=rep(1,10))
                     )
 
-load_strategy <- function(strategy) {
+load_strategy <- function(strategy, parameters) {
 
     strategyFile <- file.path('strategies', paste0(strategy,'.R'))
 
@@ -42,7 +42,7 @@ load_strategy <- function(strategy) {
     source(strategyFile) # load in getOrders
 
     # set params
-    params <<- example_params[[strategy]]
+    params <<- parameters
     print("Parameters:")
     print(params)
 }

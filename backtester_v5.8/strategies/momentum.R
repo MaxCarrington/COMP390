@@ -5,7 +5,7 @@
 #by price gaps. 
 
 getOrders <- function(store, newRowList, currentPos, info, params) {
-  
+
   allzero  <- rep(0,length(newRowList)) # used for initializing vectors
   if (is.null(store))
     store <- initStore(newRowList, params$series)
@@ -17,7 +17,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     seriesIndex <- params$series[i]
     series <- store$ohlcv[[seriesIndex]]
     #If there have been enough periods for the lookback
-    if (store$iter > params$lookback[[i]]){
+    if (store$iter > max(params$lookback[[i]], params$rsiLookback[[i]])){
       if(store$count[seriesIndex] >= params$holdingPeriod[[i]] || store$count[seriesIndex] <= -params$holdingPeriod[[i]]){
         pos[seriesIndex] <- -currentPos[seriesIndex] # Close the position
         store$count[seriesIndex] <- 0 # Reset the count for this series
@@ -29,10 +29,10 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
                                 SMA = calculateSMA(series$Close, params$smaLookback),
                                 EMA = calculateEMA(series$Close, params$emaLookback),
                                 WMA = calculateWMA(series$Close, params$wmaLookback))
-        
+
         #Determine the trend of the series
-        upTrend <- isTrendingUp(movingAverage, lookback, params$maThreshold)
-        downTrend <- isTrendingDown(movingAverage, lookback, params$maThreshold)
+        upTrend <- isTrendingUp(movingAverage, params$lookback, params$maThreshold)
+        downTrend <- isTrendingDown(movingAverage, params$lookback, params$maThreshold)
         
         #Determine if the series is overbought or oversold
         oversold <- isRSIOversold(rsi[length(rsi)], params$oversoldThresh)
@@ -105,18 +105,26 @@ isTrendingUp <- function(movingAverage, lookback, threshold){
   movingAverage <- coredata(movingAverage)
   trendingScore <- 0
   isTrendingUpwards <- FALSE
-  # Start from the last value and go back by lookback periods
-  for(i in (length(movingAverage) - lookback + 1):length(movingAverage)){
-    if(movingAverage[i] > movingAverage[i - 1]) {
+  
+  # Ensure there are enough data points
+  if(length(movingAverage) < lookback) {
+    print("Not enough data for the specified lookback")
+    return(FALSE)
+  }
+  
+  for(i in seq(from = length(movingAverage), to = (length(movingAverage) - lookback + 1), by = -1)){
+    if(!is.na(movingAverage[i]) && !is.na(movingAverage[i-1]) && movingAverage[i] > movingAverage[i - 1]){
       trendingScore <- trendingScore + 1
     }
   }
-  # Check if the score meets the upward trend criteria, currently 80%
+  
   if(trendingScore >= lookback * threshold)
     isTrendingUpwards <- TRUE
   
   return(isTrendingUpwards)
 }
+
+
 
 #Determine if a time series is downwardly trending based on a moving average, if threshold% of the periods in the lookback are 
 # decreasing in price, there is an downtrend
@@ -125,23 +133,29 @@ isTrendingDown <- function(movingAverage, lookback, threshold){
   trendingScore <- 0
   isTrendingDownwards <- FALSE
   
-  # Start from the last value and go back by lookback periods
-  for(i in (length(movingAverage) - lookback + 1):length(movingAverage)){
-    if(movingAverage[i] < movingAverage[i - 1]) {
+  # Ensure there are enough data points
+  if(length(movingAverage) < lookback) {
+    print("Not enough data for the specified lookback")
+    return(FALSE)
+  }
+  
+  for(i in seq(from = length(movingAverage), to = (length(movingAverage) - lookback + 1), by = -1)){
+    if(!is.na(movingAverage[i]) && !is.na(movingAverage[i-1]) && movingAverage[i] < movingAverage[i - 1]){
       trendingScore <- trendingScore + 1
     }
   }
-  # Check if the score meets the downward trend criteria
+  
   if(trendingScore >= lookback * threshold)
     isTrendingDownwards <- TRUE
   
   return(isTrendingDownwards)
 }
 
+
 # functions for managing the store
 
 initStore <- function(newRowList, series) {
-  # Initialize ohlcvStore as before
+  # Initialise ohlcvStore as before
   ohlcvStore <- list()
   for (s in series) {
     ohlcvStore[[s]] <- xts(matrix(numeric(0), ncol = 5, dimnames = list(NULL, c("Open", "High", "Low", "Close", "Volume"))),

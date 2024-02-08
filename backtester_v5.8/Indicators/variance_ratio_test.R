@@ -13,15 +13,12 @@ if (!require(vrtest))
 
 performVarianceRatioTest <- function(series, lags = c(2, 3, 5, 10), significanceThreshold = 1.95) {
   
-  log_returns <- diff(log(series))
-  log_returns <- na.omit(log_returns)  # Remove NAs
-  
   varRatioSignificant <- FALSE
   significantLag <- NA
   significantStats <- list()
   
   for (k in lags) {
-    vr_test_result <- Lo.Mac(log_returns, k = k)
+    vr_test_result <- Lo.Mac(series, k = k)
     # Extract M1 and M2 statistics
     m1 <- vr_test_result$Stats[1]
     m2 <- vr_test_result$Stats[2]
