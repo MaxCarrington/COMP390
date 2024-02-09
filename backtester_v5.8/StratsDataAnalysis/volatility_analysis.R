@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 # - Volatility Analysis
-#   - Calculate the ATR and the VIX
-#   - Normalise the indicators, using the Z-score
+#   - Calculate the ATR, VIX and std of log returns  
+#   - Normalise the ATR and VIX indicators, using the Z-score
 #   - Create a combined volatility score based on the normalised values
 #   - Define volatility thresholds
 #   - Analyse the combined score over time to identify perios of high/low volatility
@@ -9,30 +9,38 @@
 #-------------------------------------------------------------------------------
 source('./Indicators/average_true_range.R')
 source('./Indicators/volatility_index.R')
+source('./Plot/plot_volatility.R')
 
-analyseMonthlyVol <- function(series, lookback){
-  #Calculate the fortnightly indicator and weeklyVIXs
-  #Lookback should be 7
-  #Pass in weeklyATR/weeklyVIX
+analysePeriodVol <- function(series, lookback, monthly=FALSE){
   
+  stdDev <- stdDevRollingWindow(series$Close, lookback)
   standardisedATRs <- zScoreStandardisation(calculateATRForRangeXTS(series, lookback))
   standardisedVIXs <- zScoreStandardisation(calculateVIXForRangeXTS(series, lookback))
   
   combinedATRVIX <- stdATRandVIX(standardisedATRs, standardisedVIXs)
-  volatilityClassifications <- classifyVolatility(combinedATRVIX)
-  
-  numberOfMonths <- floor(length(series$Close) / 7) /4
-  endOfMonthIndex <- 4
-  startOfMonthIndex <- 1
-  monthlyVol <- c()
-  for(i in 1:numberOfMonths){
-    monthVol <- determineSeriesVolatility(volatilityClassifications[startOfMonthIndex:endOfMonthIndex])
-    monthlyVol <- c(monthlyVol, monthVol)
-    startOfMonthIndex <- endOfMonthIndex + 1
-    endOfMonthIndex <- endOfMonthIndex + 4
+  volClassifications <- classifyVolatility(combinedATRVIX)
+  if(monthly && lookback == 7){
+    
+    weeksInMonth <- 4
+    numberOfMonths <- floor(length(series$Close) / lookback) / weeksInMonth
+    endOfMonthIndex <- weeksInMonth
+    startOfMonthIndex <- 1
+    monthlyVol <- c()
+    
+    for(i in 1:numberOfMonths){
+      monthVol <- determineSeriesVolatility(volClassifications[startOfMonthIndex:endOfMonthIndex])
+      monthlyVol <- c(monthlyVol, monthVol)
+      startOfMonthIndex <- endOfMonthIndex + 1
+      endOfMonthIndex <- endOfMonthIndex + weeksInMonth
+    }
+    
+    seriesVol <- analyseSeriesVol(monthlyVol)
+    volClassifications <- monthlyVol
+    
+  }else{
+    seriesVol <- analyseSeriesVol(volClassifications)
   }
-  seriesVol <- analyseSeriesVol(monthlyVol)
-  return(list(monthlyVol = monthlyVol, seriesVol = seriesVol))
+  return(list(PeriodVol = volClassifications, seriesVol = seriesVol, stdDev = stdDev))
 }
 
 analyseSeriesVol <- function(monthlyVolatility){
@@ -151,16 +159,27 @@ stdATRandVIX <- function(normATRs, normVIXs) {
   return(combinedScores)
 }
 
-#Calculate the standard deviation of returns over a rolling window
+# Calculate the standard deviation of returns over a rolling window
 stdDevRollingWindow <- function(series, lookback){
-  returns <- diff(log(series$Close), lag = 1)
   
-  #Calculate a rolling window of the standard devation of returns 
+  # Calculate returns, ensuring no log of non-positive numbers
+  returns <- diff(log(ifelse(series > 0, series, NA)), lag = 1)
+  
+  # Calculate rolling standard deviation, handling NA values
   rollingStdDev <- runSD(returns, n = lookback)
-  # Return the rolling standard deviation series
   return(rollingStdDev)
-  
 }
+
+# Note: Before using the function, ensure your 'series' object is correctly structured,
+# with a 'Close' column for prices and a 'Date' column or index for xts objects.
+
+
+
+# Example usage:
+# Assuming 'series' is your data frame or xts object with 'Close' prices and 'Date' (for data frames)
+# lookbackPeriod <- 20
+# stdDevRollingWindowAndPlot(series, lookbackPeriod)
+
 #Call with:
 # Loop through each time series and generate a PDF plot
 #monthlyVolatility <- list()

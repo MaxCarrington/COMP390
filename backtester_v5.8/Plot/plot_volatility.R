@@ -106,6 +106,45 @@ plotVIXData <- function(weeklyFile, monthlyFile, fortnightlyFile, titleString = 
   grid.arrange(grobs = plots, ncol = 2, top = textGrob(titleString, gp = gpar(fontsize = 20, font = 1)))
 }
 
+plotstdDevRollingWindow <- function(){
+  
+}
+plotRollingStdDev <- function(rollingStdDev, dates = NULL) {
+  # If dates are not provided, assume rollingStdDev includes them or is an xts object
+  if (is.null(dates)) {
+    if ("xts" %in% class(rollingStdDev)) {
+      # xts object: use index as dates
+      dataForPlot <- data.frame(Date = index(rollingStdDev), Volatility = as.numeric(rollingStdDev))
+    } else if ("data.frame" %in% class(rollingStdDev)) {
+      # Assume the data frame has a Date column
+      dataForPlot <- rollingStdDev
+    } else {
+      stop("Please provide a 'dates' vector or use an xts object or data frame with a Date column.")
+    }
+  } else {
+    # Create a data frame from provided dates and rollingStdDev values
+    dataForPlot <- data.frame(Date = dates, Volatility = rollingStdDev)
+  }
+  
+  # Plotting with ggplot2
+  plot <- ggplot(dataForPlot, aes(x = Date, y = Volatility)) +
+    geom_line() +  # Plot as a line
+    labs(title = "Rolling Standard Deviation of Returns Over Time",
+         x = "Date", y = "Volatility (Standard Deviation)") +
+    theme_minimal()  # Use a minimal theme for aesthetics
+  
+  print(plot) # Explicitly print the plot
+}
+
+
+# Example usage:
+# Assume 'series' is your numeric series of closing prices and 'lookback' is your desired window size
+# series <- ... # Your series data here
+# lookback <- 20
+# rollingStdDevValues <- stdDevRollingWindow(series, lookback)
+# plotRollingStdDev(rollingStdDevValues)
+
+
 
 
 
