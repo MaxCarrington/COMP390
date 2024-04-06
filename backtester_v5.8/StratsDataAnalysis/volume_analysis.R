@@ -91,7 +91,6 @@ detectPriceIncrease <- function(prices) {
 }
 #For market making, focus on identifying high liquidity periods with narrow bid-ask spreads
 #or high volume periods indicating active trading.
-library(TTR)  # For SMA, EMA functions
 
 # Assuming 'series' contains Open, High, Low, Close, Volume columns
 combinedLiquidityAnalysis <- function(series, volLookback, liquidityThresh, windowSize) {
@@ -103,11 +102,18 @@ combinedLiquidityAnalysis <- function(series, volLookback, liquidityThresh, wind
   liquidityIndicators <- estimateLiquidity(highVolSeries, windowSize)
   # Combine information from both steps
   # Assuming we're interested in periods identified as high liquidity within high volume periods
+  # High liquidity and volume periods means buy and sell orders can be filled easily w/o significant price movements and the MMaker
+  # can operate with tighter spreads
   finalSelection <- highVolumePeriods[!is.na(liquidityIndicators$highLiquidity == 1)]
+  
   return(list(
     highVolumePeriods = highVolumePeriods,
     finalSelection = finalSelection,
-    liquidityIndicators = liquidityIndicators
+    liquidityIndicators = liquidityIndicators,
+    totalPeriods = length(series$Volume) - (volLookback - 1),
+    lookback = volLookback,
+    liquidityThresh = liquidityThresh, 
+    windowSize = windowSize
   ))
 }
 
@@ -122,7 +128,12 @@ highLiquidityPeriods <- function(series, volLookback, threshold) {
 
 estimateLiquidity <- function(series, windowSize = 20) {
   # Assuming 'series' has High, Low, Close, Volume columns
+  windowSize <- 10
+  if(windowSize > nrow(series))
+    windowSize <- nrow(series)
   volatility <- (series$High - series$Low) / series$Low
+  # VWAP helps to ensure you are executing trades favorably compared to the market. The VWAP data can guide the pricing of orders to 
+  #improve the execution quality during these selected high volume and liquidity periods
   vwap <- (series$High + series$Low + series$Close) / 3
   avgVolume <- runMean(series$Volume, n = windowSize)
   avgVolatility <- runMean(volatility, n = windowSize)
@@ -150,6 +161,20 @@ standardPricenVol <- function(normPrices, normVolume){
   combinedScores <- (normPrices + normVolume) / 2
   
   return(combinedScores) 
+}
+
+# Use the volume to determine if we are currently in a high liquidity periods.
+isHighLiquidity <- function(volume, lookback, threshold) {
+  # Calculate rolling average or median of volume for the lookback period
+  rollingVolume <- rollapply(volume, width = lookback, FUN = median, align = 'right', fill = NA)
+  
+  # Current volume
+  currentVolume <- tail(volume, n = 1)
+  
+  # Determine if the current volume is significantly higher than the rolling average/median
+  highLiquidity <- currentVolume > (threshold * tail(rollingVolume, n = 1))
+  
+  return(highLiquidity)
 }
 
 

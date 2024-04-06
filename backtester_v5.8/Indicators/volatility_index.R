@@ -29,7 +29,7 @@ calculateVIXForPeriod <- function(series, startRangeIndex, lookback) {
   }
   currentRange <- series[startRangeIndex:endIndex, ]
   dailyVol <- dailyVolatility(currentRange, lookback)
-  numTradeDaysInYear <- 356
+  numTradeDaysInYear <- 365 #Change to 252
   annualisedVol <- dailyVol * sqrt(numTradeDaysInYear)
   return(annualisedVol)
 }
@@ -53,6 +53,29 @@ calculateVIXForRangeXTS <- function(series, lookback) {
   }
   
   vixXTS <- xts(currentSeriesVIXs, order.by = as.Date(vixDates))
+  return(vixXTS)
+}
+calculateRollingVIX <- function(series, lookback) {
+  # Ensure there's enough data
+  if(nrow(series) < lookback) {
+    stop("Not enough data for the specified lookback period")
+  }
+  
+  # Calculate logarithmic returns for the entire series
+  logReturns <- diff(log(series$Close))
+  
+  # Calculate rolling standard deviation of log returns (daily volatility)
+  dailyVol <- runSD(logReturns, n = lookback)
+  
+  # Number of trading days in a year (typically 252)
+  numTradeDaysInYear <- 252  #Change to 365
+  
+  # Annualize the daily volatility
+  annualisedVol <- dailyVol * sqrt(numTradeDaysInYear)
+  
+  # Create an XTS object for annualized volatility
+  vixXTS <- xts(annualisedVol, order.by = index(series)) # Exclude the first date due to diff operation
+  
   return(vixXTS)
 }
 

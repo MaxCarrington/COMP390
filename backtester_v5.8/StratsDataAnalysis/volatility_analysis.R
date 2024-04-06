@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 # - Volatility Analysis
 #   - Calculate the ATR, VIX and std of log returns  
-#   - Normalise the ATR and VIX indicators, using the Z-score
+#   - Standardise the ATR and VIX indicators, using the Z-score
 #   - Create a combined volatility score based on the normalised values
 #   - Define volatility thresholds
 #   - Analyse the combined score over time to identify perios of high/low volatility
@@ -12,13 +12,15 @@ source('./Indicators/volatility_index.R')
 source('./Plot/plot_volatility.R')
 
 analysePeriodVol <- function(series, lookback, monthly=FALSE){
+  stdDev <- stdDevRollingWindow(series, lookback)
   
-  stdDev <- stdDevRollingWindow(series$Close, lookback)
-  standardisedATRs <- zScoreStandardisation(calculateATRForRangeXTS(series, lookback))
-  standardisedVIXs <- zScoreStandardisation(calculateVIXForRangeXTS(series, lookback))
-  
-  combinedATRVIX <- stdATRandVIX(standardisedATRs, standardisedVIXs)
-  volClassifications <- classifyVolatility(combinedATRVIX)
+  #standardisedATRs <- zScoreStandardisation(calculateATRForRangeXTS(series, lookback))
+  #standardisedVIXs <- zScoreStandardisation(calculateVIXForRangeXTS(series, lookback))
+  standardisedATRs <- zScoreStandardisation(calculateRollingATR(series, lookback))
+  standardisedVIXs <- zScoreStandardisation(calculateRollingVIX(series, lookback))
+  standardisedStdDev <- zScoreStandardisation(stdDevRollingWindow(series, lookback))
+  combinedATRVIXStdDev <- stdATRVIXStdDev(standardisedATRs, standardisedVIXs, standardisedStdDev)
+  volClassifications <- classifyVolatility(combinedATRVIXStdDev)
   if(monthly && lookback == 7){
     
     weeksInMonth <- 4
@@ -33,42 +35,43 @@ analysePeriodVol <- function(series, lookback, monthly=FALSE){
       startOfMonthIndex <- endOfMonthIndex + 1
       endOfMonthIndex <- endOfMonthIndex + weeksInMonth
     }
-    
     seriesVol <- analyseSeriesVol(monthlyVol)
     volClassifications <- monthlyVol
     
   }else{
     seriesVol <- analyseSeriesVol(volClassifications)
   }
-  return(list(PeriodVol = volClassifications, seriesVol = seriesVol, stdDev = stdDev))
+  return(list(periodVol = volClassifications, seriesVol = seriesVol))
 }
 
 analyseSeriesVol <- function(monthlyVolatility){
+  # Define category labels
   nonVolatile = "Non-Volatile"
   volatile = "Volatile"
   highlyVolatile = "Highly Volatile"
   
+  # Create a frequency table
   frequencyTable <- table(monthlyVolatility)
-  numNonVolatile <- frequencyTable[nonVolatile]
-  numVolatile <- frequencyTable[volatile]
-  numHighVolatile <- frequencyTable[highlyVolatile]
-  totalScores <- length(monthlyVolatility)
   
-  # If 'High' or 'Highly Volatile' are not in the table, assign them a value of 0
-  if(is.na(numNonVolatile)) numNonVolatile <- 0
-  if(is.na(numVolatile)) numVolatile <- 0
-  if(is.na(numHighVolatile)) numHighVolatile <- 0
+  # Correctly calculate the total number of periods
+  totalScores <- sum(frequencyTable)
   
-  if(numNonVolatile >= totalScores*0.95){
+  # Access frequency counts, ensuring to handle cases where a category might be missing
+  numNonVolatile <- ifelse("Low" %in% names(frequencyTable), frequencyTable["Low"], 0)
+  numVolatile <- ifelse("Medium" %in% names(frequencyTable), frequencyTable["Medium"], 0) +
+    ifelse("High" %in% names(frequencyTable), frequencyTable["High"], 0)
+  numHighVolatile <- ifelse("Highly Volatile" %in% names(frequencyTable), frequencyTable["Highly Volatile"], 0)
+  
+  # Classification logic based on the distribution of volatility categories
+  if(numNonVolatile >= totalScores*0.70){
     return(nonVolatile)
-  }
-  else if((numVolatile >= totalScores*0.20 && numVolatile <= totalScores*0.50) && numHighVolatile <= totalScores*0.10){
+  } else if(numHighVolatile/totalScores > 0.10){
+    return(highlyVolatile)
+  } else {
     return(volatile)
   }
-  else{
-    return(highlyVolatile)
-  }
 }
+
 
 
 determineSeriesVolatility <- function(classifiedVolatility) {
@@ -97,15 +100,15 @@ determineSeriesVolatility <- function(classifiedVolatility) {
 
 # Function to classify volatility periods based on percentiles and standard deviations
 classifyVolatility <- function(volatilityScores) {
+  volatilityScores <- na.omit(volatilityScores)
   meanScore <- mean(volatilityScores, na.rm = TRUE)
   sdScore <- sd(volatilityScores, na.rm = TRUE)
+  # Adjust thresholds if necessary due to the inclusion of stdDev in the combined score
+  highVolPercentileThreshold <- quantile(volatilityScores, 0.7)  # Top 30%
+  highPercentileThreshold <- quantile(volatilityScores, 0.6)     # Top 40%
   
-  # Define thresholds based on percentiles and standard deviations
-  highVolPercentileThreshold <- quantile(volatilityScores, 0.7) # Top 30%
-  highPercentileThreshold <- quantile(volatilityScores, 0.6)    # Top 40%
-  
-  highVolSDThreshold <- meanScore + 1.5 * sdScore # Threshold for "Highly Volatile"
-  highSDThreshold <- meanScore + sdScore          # Threshold for "High"
+  highVolSDThreshold <- meanScore + 1.5 * sdScore  # Threshold for "Highly Volatile"
+  highSDThreshold <- meanScore + sdScore           # Threshold for "High"
   
   classifiedScores <- ifelse(volatilityScores > highVolPercentileThreshold & volatilityScores > highVolSDThreshold, "Highly Volatile",
                              ifelse(volatilityScores > highPercentileThreshold & volatilityScores > highSDThreshold, "High",
@@ -143,28 +146,21 @@ zScoreStandardisation <- function(indicatorValues){
   return(zScore)
 }
 
-stdATRandVIX <- function(normATRs, normVIXs) {
-  if (!inherits(normATRs, "xts") || !inherits(normVIXs, "xts")) {
-    stop("Both normATRs and normVIXs must be xts objects.")
-  }
+stdATRVIXStdDev <- function(standardisedATRs, standardisedVIXs, standardisedStdDev) {
+  # Ensure alignment of date
   
-  # Ensure both xts objects have the same index (dates)
-  if (!all(index(normATRs) == index(normVIXs))) {
-    stop("The indices (dates) of normATRs and normVIXs do not match.")
-  }
-  
-  # Average and combine both ATR and VIX
-  combinedScores <- (normATRs + normVIXs) / 2
+  # Combine scores now that they are aligned
+  combinedScores <- (standardisedATRs + standardisedVIXs + standardisedStdDev) / 3
   
   return(combinedScores)
 }
 
+
+
 # Calculate the standard deviation of returns over a rolling window
 stdDevRollingWindow <- function(series, lookback){
-  
   # Calculate returns, ensuring no log of non-positive numbers
-  returns <- diff(log(ifelse(series > 0, series, NA)), lag = 1)
-  
+  returns <- diff(log(ifelse(series$Close > 0, series$Close, NA)), lag = 1)
   # Calculate rolling standard deviation, handling NA values
   rollingStdDev <- runSD(returns, n = lookback)
   return(rollingStdDev)
@@ -189,7 +185,7 @@ stdDevRollingWindow <- function(series, lookback){
 #  currentVIX <- weeklyVIXs[[i]]
 #  standardisedATRs <- zScoreStandardisation(calculateATRForRangeXTS(series,7))
 #  standardisedVIXs <- zScoreStandardisation(calculateVIXForRangeXTS(series, 7))
-#  combinedATRVIX <- stdATRandVIX(standardisedATRs, standardisedVIXs)
+#  combinedATRVIX <- stdATRVIXStdDev(standardisedATRs, standardisedVIXs)
 # Print any additional information you need
 #  volatiltiyAnalysis <- analyseMonthlyVol(series, 7)
 #  monthlyVolatility[[length(monthlyVolatility) + 1]] <- volatiltiyAnalysis

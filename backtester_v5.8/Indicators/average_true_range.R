@@ -42,3 +42,27 @@ calculateATRForRangeXTS <- function(series, lookback) {
   atrXTS <- xts(currentSeriesATRs, order.by = as.Date(atrDates))
   return(atrXTS)
 }
+calculateRollingATR <- function(series, lookback) {
+  # Number of observations
+  n <- nrow(series)
+  
+  # Initialize vector to store True Range values
+  trueRanges <- numeric(n)
+  
+  # Calculate True Range for each day
+  for (i in 2:n) {
+    highLowDiff <- series$High[i] - series$Low[i]
+    highPrevClose <- abs(series$High[i] - series$Close[i - 1])
+    lowPrevClose <- abs(series$Low[i] - series$Close[i - 1])
+    
+    trueRanges[i] <- max(highLowDiff, highPrevClose, lowPrevClose)
+  }
+  
+  # Calculate rolling ATR
+  rollingATR <- runMean(trueRanges, n = lookback)
+  
+  # Return as an xts object
+  atrXTS <- xts(rollingATR, order.by = index(series))
+  return(atrXTS)
+}
+

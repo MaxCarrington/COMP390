@@ -7,12 +7,14 @@ suitableStratslist <- function(inSampleDataList){
                      marketMaking = "Market-Making")
   index <- 2
   lookback <- 7
-  volThresh <- 0.85
-  volWSize <- 30
   pValueThreshMR <- 0.95
   momentumWSize <- 30
   pValueThreshMom <- 0.95
-  
+  volatilityLookback <- 20
+  monthly <- FALSE
+  volumeLookback <- 20
+  liquidityThresh <- 0.95
+  periodThresh <- 0.95
   momentumLenThresh <- 0.90
   # Initialize an empty list to hold the analysis and strategy for each series
   seriesAnalysisInfo <- list()
@@ -20,12 +22,12 @@ suitableStratslist <- function(inSampleDataList){
   for(i in 1:length(inSampleDataList)) {
     series <- inSampleDataList[[i]]
     
-    # Analyze the series for various factors
+    # Analyse the series for strategy atttrributes
     volatilityStats <- analyseVolatility(series, lookback)
-    volumeStats <- analyseVolume(series, lookback, volWSize, volThresh)
+    liquidityStats <- analyseLiquidity(series, volatilityLookback, monthly, windowSize, volumeLookback, liquidityThresh, periodThresh)
     momentumStats <- analyseMomentum(series, momentumWSize, pValueThreshMom, momentumLenThresh)
-    
     mrStats <- analyseMR(series, i, pValueThreshMR)
+    numOnes <- sum(liquidityStats$liquidityIndicators$highLiquidity == 1, na.rm = TRUE)
     if(momentumStats$stratType == strategies$meanReversion){
       mrStats$meanRevScore <- mrStats$meanRevScore + 5
     }
@@ -36,12 +38,17 @@ suitableStratslist <- function(inSampleDataList){
     }else if(mrStats$meanRevScore >= 40){
       strategy <- strategies$meanReversion
     } else if(volatilityStats$seriesVol == "Non-Volatile") {
-      strategy <- strategies$marketMaking
+      #Count the number of periods of high liquidity
+      numOnes <- sum(liquidityStats$liquidityIndicators$highLiquidity == 1, na.rm = TRUE)
+      
+      if(numOnes > (length(liquidityStats$liquidityIndicators$highLiquidity)*0.18))
+        strategy <- strategies$marketMaking 
     }
+    print(strategy)
     # Append the analysis and determined strategy to the list
     seriesAnalysisInfo[[length(seriesAnalysisInfo) + 1]] <- list(
       volatility = volatilityStats,
-      volume = volumeStats,
+      volumeStats = liquidityStats, #Change this to be different for all
       momentum = momentumStats,
       meanReversion = mrStats,
       index = i,
@@ -98,14 +105,48 @@ getMomentumInfo <- function(seriesAnalysisInfo){
 getMMakingInfo <- function(seriesAnalysisInfo){
   # Extract Market-Making Series Indexes
   marketMakingSeriesIndexes <- sapply(seriesAnalysisInfo, function(x){
-    if(x$strategy == "Market-Making")
+    if(x$strategy == "Market-Making"){
       x$index
+    }
     else
       NA
   })
   marketMakingSeriesIndexes <- na.omit(marketMakingSeriesIndexes)
   attr(marketMakingSeriesIndexes, "na.action") <- NULL
-  return(marketMakingSeriesIndexes)
+  marketMakingVolLookback <- sapply(seriesAnalysisInfo, function(x){
+    if(x$strategy == "Market-Making"){
+      x$volumeStats$lookback
+    }
+    else
+      NA
+  })
+  marketMakingVolLookback <- na.omit(marketMakingVolLookback)
+  attr(marketMakingVolLookback, "na.action") <- NULL
+  
+  marketMakingliquidityThresh<- sapply(seriesAnalysisInfo, function(x){
+    if(x$strategy == "Market-Making"){
+      x$volumeStats$liquidityThresh
+    }
+    else
+      NA
+  })
+  marketMakingliquidityThresh <- na.omit(marketMakingliquidityThresh)
+  attr(marketMakingliquidityThresh, "na.action") <- NULL
+  
+  marketMakingWindowSize<- sapply(seriesAnalysisInfo, function(x){
+    if(x$strategy == "Market-Making"){
+      x$volumeStats$windowSize
+    }
+    else
+      NA
+  })
+  marketMakingWindowSize <- na.omit(marketMakingWindowSize)
+  attr(marketMakingWindowSize, "na.action") <- NULL
+  
+  return(list(marketMakingVolLookback=marketMakingVolLookback, 
+              marketMakingSeriesIndexes=marketMakingSeriesIndexes, 
+              marketMakingliquidityThresh = marketMakingliquidityThresh,  
+              marketMakingWindowSize = marketMakingWindowSize))
 }
 
 setUpTradingParams <- function(tradingStrategy, strategies){
@@ -115,7 +156,10 @@ setUpTradingParams <- function(tradingStrategy, strategies){
     mrInfo <- getMeanRevInfo(strategies)
     
     if(length(mrInfo$seriesIndexes) > 0){
-      return(list(stdDev=2, series=mrInfo$seriesIndexes, halfLives=mrInfo$halfLives, posSizes=rep(1,10)))
+      return(list(stdDev=2, 
+                  series=mrInfo$seriesIndexes, 
+                  halfLives=mrInfo$halfLives, 
+                  posSizes=rep(1,10)))
     }
     else{
       cat("Mean reverison strategy can not run. No series are deemed suitable.", "\n")
@@ -124,8 +168,17 @@ setUpTradingParams <- function(tradingStrategy, strategies){
   }else if(tradingStrategy == "momentum") {#If the strategy is momentum, pass the relevant parameters to the strategy
     momentumInfo <- getMomentumInfo(strategies)
     if(length(momentumInfo$seriesIndexes) > 0){
-      return (list(series = momentumInfo$seriesIndexes, lookback = momentumInfo$momentumLookbacks, holdingPeriod = c(12),rsiLookback = 30, emaLookback = 30, 
-                 smaLookback = 30, wmaLookback = 30, maThreshold = 0.7, overboughtThresh = 60, oversoldThresh = 40, maType = "SMA"))
+      return (list(series = momentumInfo$seriesIndexes, 
+                   lookback = momentumInfo$momentumLookbacks, 
+                   holdingPeriod = c(12),
+                   rsiLookback = 30, 
+                   emaLookback = 30, 
+                   smaLookback = 30,
+                   wmaLookback = 30, 
+                   maThreshold = 0.7, 
+                   overboughtThresh = 60, 
+                   oversoldThresh = 40, 
+                   maType = "SMA"))
     }
     else{
       cat("Momentum strategy can not run. No series are deemed suitable.", "\n")
@@ -134,10 +187,16 @@ setUpTradingParams <- function(tradingStrategy, strategies){
   }else if(tradingStrategy == "market_making"){
     mmkingInfo <- getMMakingInfo(strategies)
     if(length(mmkingInfo) > 0){
-      example_params[["market_making"]][["series"]] <- mmkingInfo
+      return (list(series = mmkingInfo$marketMakingSeriesIndexes, 
+                   lookback = mmkingInfo$marketMakingVolLookback, 
+                   liquidityThresh =mmkingInfo$marketMakingliquidityThresh, 
+                   windowSize = mmkingInfo$marketMakingWindowSize, 
+                   highLiquidityPrdsThresh = 10, 
+                   volatilityLookback = 10,
+                   ))#volumeLookback = 20))
     }
     else{
-      cat("Momentum strategy can not run. No series are deemed suitable.", "\n")
+      cat("Market making strategy can not run. No series are deemed suitable.", "\n")
     }
   }
 }
