@@ -13,7 +13,7 @@ source('./set_up_strategies.R')
 dataList <- getData(directory="PART1")
 
 # strategy will be passed in as a command line argument from jenkins
-#args <- commandArgs(trailingOnly = TRUE)
+args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 1) {
   tradingStrategy <- "market_making"
 } else{
