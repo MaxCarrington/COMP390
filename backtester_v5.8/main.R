@@ -19,6 +19,7 @@ if (length(args) < 1) {
 } else{
  tradingStrategy <- args[1]
 }
+print(args[1])
 
 # check that the choice is valid
 is_valid_example_strategy <- function(tradingStrategy) { 
