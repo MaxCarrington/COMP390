@@ -19,8 +19,8 @@ if (length(args) < 1) {
 } else{
  tradingStrategy <- args[1]
 }
-print("Hello")
-print(args[1])
+cat("Hello", "/n")
+cat(args[1], "/n")
 
 # check that the choice is valid
 is_valid_example_strategy <- function(tradingStrategy) { 
