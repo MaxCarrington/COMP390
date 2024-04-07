@@ -38,7 +38,7 @@ suitableStratslist <- function(inSampleDataList){
     
     # Analyse the series for volatility, liquidity, momentum statistics, mean reversion statistics
     volatilityStats <- analyseVolatility(series, volatilityLookback)
-    liquidityStats <- analyseLiquidity(series, volatilityLookback, monthly, windowSize, volumeLookback, liquidityThresh, periodThresh)
+    liquidityStats <- analyseLiquidity(series, volatilityLookback, monthly, liquidityWindowSize, volumeLookback, liquidityThresh, periodThresh)
     momentumStats <- analyseMomentum(series, momentumWSize, pValueThreshMom, momentumLenThresh)
     mrStats <- analyseMR(series, i, pValueThreshMR)
     numOnes <- sum(liquidityStats$liquidityIndicators$highLiquidity == 1, na.rm = TRUE)
