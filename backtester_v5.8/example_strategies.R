@@ -27,7 +27,7 @@ example_params <- list(
                     "bbands_holding_period"=list(lookback=50,sdParam=1.5,series=c(1,3),posSizes=rep(1,10),holdPeriod=6),
                     "simple_limit"=list(spreadPercentage=0.001,inventoryLimits=rep(10,10)),
                     "extreme_limit"=list(spreadPercentage=0.001,inventoryLimits=rep(10,10)),
-                    "market_making"=list(series = c()),
+                    "market_making"=list(series = c(5),lookback = c(20), liquidityThresh = 0.95, windowSize =30, highLiquidityPrdsThresh = 10, volatilityLookback = 10),
                     "momentum"=list(series = c(), lookback = c(), holdingPeriod = c(),rsiLookback = 30, emaLookback = 30, 
                                     smaLookback = 30, wmaLookback = 30, maThreshold = 0.7, overboughtThresh = 60, oversoldThresh = 40, maType = "SMA"),
                     "mean_reversion"=list(stdDev=2, series = c(), halfLives = c(), posSizes=rep(1,10))

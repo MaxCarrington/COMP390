@@ -3,6 +3,7 @@
 
 source("Indicators/average_true_range.R")
 source("StratsDataAnalysis/volatility_analysis.R")
+source("StratsDataAnalysis/volume_analysis.R")
 
 #------------------------------------------------------------------------------------------------------
 # Main strategy function that operates through each series. Based on the series' market conditions,
@@ -11,7 +12,7 @@ source("StratsDataAnalysis/volatility_analysis.R")
 getOrders <- function(store, newRowList, currentPos, info, params) {
   standardOrderSize <- 10 #Change this -> dynamically change the size based on the amount of money left in the account and the price of the asset in relation to this!
   confidence <- 0.5 # Is conservative currently, change this when optimising parameters and put it as a parameter
-  liquidityLookback <- 30 #Add this into params MUST BE ODD
+  liquidityLookback <- 15 #Add this into params MUST BE ODD
   # Initialise the store if it has not already been initialised
   if (is.null(store))
     store <- initStore(newRowList, params$series)
@@ -42,9 +43,9 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
         spread <-tail(store$spread[[seriesIndex]], 1)
         #print(store$liquidity[[seriesIndex]])
         #If a high liquidity period is detected, change order size based on the volatility of the total series
+        
+        directionLiquidities <- tail(store$liquidity[[seriesIndex]], liquidityLookback)
         if(highLiquidity){
-          #print("High liquidity period detected. Adjusting strategy...")
-          directionLiquidities <- tail(store$liquidity[[seriesIndex]], liquidityLookback)
           direction <- determineTradeDirection(store$ohlcv[[seriesIndex]]$Close, store$ohlcv[[seriesIndex]]$Volumes, directionLiquidities, liquidityLookback)
           if(direction != "hold"){
             orderSize <- determineOrderSize(currentPos[i], currentSeriesVol, highLiquidity, standardOrderSize, confidence, direction)
@@ -55,14 +56,10 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
             } else if (direction == "sell") {
               limitPrices2[seriesIndex] <- closePrice + spread / 2
               limitOrders2[seriesIndex] <- orderSize
-            }
           }
-          
-        }
-        else{ #Potentially implement this, not sure yet.
-         # print("Low or normal liquidity period detected. Adjusting stategy...")
-        }
+          }
       }
+    }
     }
   }
   
@@ -75,30 +72,34 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
               limitPrices2=limitPrices2))
 }
 
-determineTradeDirection <- function(prices, volumes, liquidities, lookback = 30) {
+determineTradeDirection <- function(prices, volumes, liquidities, lookback = 15) {
   
   liquidityThresh <- 0.4
   
-  # Calculate the short-term moving average
+  if(lookback > nrow(prices))
+    lookback <- nrow(prices)
+    # Calculate the short-term moving average
   shortTermMA <- tail(SMA(prices, n = lookback), 1)
   # Determine the trend direction
   trendDirection <- ifelse(tail(prices, 1) > shortTermMA, "upwards", "downwards")
   
   # Calculate the proportion of high liquidity periods for early and later parts of the lookback period
+  if(lookback > length(liquidities))
+    lookback <- length(liquidities)
+  
   splitPoint <- floor(lookback / 2)
   earlyHighLiqProportion <- mean(liquidities[1:splitPoint])
   laterHighLiqProportion <- mean(liquidities[(splitPoint + 1):lookback])
-  
   liquidityDirection <- ifelse(laterHighLiqProportion > earlyHighLiqProportion, "increasing", "decreasing")
+  
+  print(paste("The trend direction is", trendDirection, "and the liquidity direction is", liquidityDirection))
   action <- "hold" # Hold if the trend and liquidity direction do not match
-  print(trendDirection)
-  print(liquidityDirection)
   if (trendDirection == "upwards" && liquidityDirection == "increasing") {
     action <- "buy"
   } else if (trendDirection == "downwards" && liquidityDirection == "decreasing") {
     action <- "sell"
   }
-  print(action)
+  #print(action) ADD IN AS COMMENT
   return(action)
 }
 
@@ -153,7 +154,6 @@ isLiquidityHigh <- function(series, storeIter, volumeLookback, thresholdPercenta
     recentVolume <- tail(useableVolumes, 1)
     highLiquidity <- recentVolume > liquidityThreshold
   }
-  
   return(highLiquidity)
 }
 

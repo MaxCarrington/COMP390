@@ -1,12 +1,23 @@
+
+#----------------------------------------------------------------------------
+# set_up_strategies.R
+#
+# This file analyses the time series to determine what time series to apply a strategy to. After time series
+# have been analysed, the parameters are set up for each strategy.
+#
+#----------------------------------------------------------------------------
+
 source('./StratsDataAnalysis/master_analysis.R')
 source('./example_strategies.R');
 suitableStratslist <- function(inSampleDataList){
- 
+  #List of each strategy type, used for string concatenation
   strategies <- list(meanReversion = "Mean-Reversion",
                      momentum ="Momentum",
                      marketMaking = "Market-Making")
-  index <- 2
-  lookback <- 7
+  
+  #--------------------------------------------------------------------------
+  #Parameters are set up and can be optimised here 
+  lookback <- 100
   pValueThreshMR <- 0.95
   momentumWSize <- 30
   pValueThreshMom <- 0.95
@@ -16,14 +27,16 @@ suitableStratslist <- function(inSampleDataList){
   liquidityThresh <- 0.95
   periodThresh <- 0.95
   momentumLenThresh <- 0.90
+  #--------------------------------------------------------------------------
+  
   # Initialize an empty list to hold the analysis and strategy for each series
   seriesAnalysisInfo <- list()
   # Loop through each series in the dataset
   for(i in 1:length(inSampleDataList)) {
     series <- inSampleDataList[[i]]
     
-    # Analyse the series for strategy atttrributes
-    volatilityStats <- analyseVolatility(series, lookback)
+    # Analyse the series for volatility, liquidity, momentum statistics, mean reversion statistics
+    volatilityStats <- analyseVolatility(series, volatilityLookback)
     liquidityStats <- analyseLiquidity(series, volatilityLookback, monthly, windowSize, volumeLookback, liquidityThresh, periodThresh)
     momentumStats <- analyseMomentum(series, momentumWSize, pValueThreshMom, momentumLenThresh)
     mrStats <- analyseMR(series, i, pValueThreshMR)
@@ -44,7 +57,9 @@ suitableStratslist <- function(inSampleDataList){
       if(numOnes > (length(liquidityStats$liquidityIndicators$highLiquidity)*0.18))
         strategy <- strategies$marketMaking 
     }
-    print(strategy)
+    
+    print(paste("Strategy for series", i, "is", strategy))
+    
     # Append the analysis and determined strategy to the list
     seriesAnalysisInfo[[length(seriesAnalysisInfo) + 1]] <- list(
       volatility = volatilityStats,
@@ -71,8 +86,10 @@ getMeanRevInfo <- function(seriesAnalysisInfo){
   
   # Get the corresponding half life for each mean reverting time series
   halfLives <- sapply(seriesAnalysisInfo, function(x){
-    if(x$strategy == "Mean-Reversion")
+    if(x$strategy == "Mean-Reversion"){
       x$meanReversion$attributes$HalfLife$HalfLife_WithIntercept
+      print(x$meanReversion$attributes$HalfLife$HalfLife_WithIntercept)
+    }
     else
       NA
   })
@@ -90,8 +107,10 @@ getMomentumInfo <- function(seriesAnalysisInfo){
       NA
   })
   momentumLookbacks <- sapply(seriesAnalysisInfo, function(x){
-    if(x$strategy == "Momentum")
+    if(x$strategy == "Momentum"){
       x$momentum$correlations$lookback
+      print(x$momentum$correlations$lookback)
+    }
     else
       NA
   })
@@ -192,8 +211,8 @@ setUpTradingParams <- function(tradingStrategy, strategies){
                    liquidityThresh =mmkingInfo$marketMakingliquidityThresh, 
                    windowSize = mmkingInfo$marketMakingWindowSize, 
                    highLiquidityPrdsThresh = 10, 
-                   volatilityLookback = 10,
-                   ))#volumeLookback = 20))
+                   volatilityLookback = 10
+                   ))
     }
     else{
       cat("Market making strategy can not run. No series are deemed suitable.", "\n")
