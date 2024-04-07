@@ -17,6 +17,7 @@ suitableStratslist <- function(inSampleDataList){
   
   #--------------------------------------------------------------------------
   #Parameters are set up and can be optimised here 
+  liquidityWindowSize <- 30
   lookback <- 100
   pValueThreshMR <- 0.95
   momentumWSize <- 30
