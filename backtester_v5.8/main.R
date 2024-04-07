@@ -19,6 +19,7 @@ if (length(args) < 1) {
 } else{
  tradingStrategy <- args[1]
 }
+print("Hello")
 print(args[1])
 
 # check that the choice is valid
