@@ -15,12 +15,10 @@ dataList <- getData(directory="PART1")
 # strategy will be passed in as a command line argument from jenkins
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 1) {
-  tradingStrategy <- "market_making"
+  tradingStrategy <- "momentum"
 } else{
  tradingStrategy <- args[1]
 }
-cat("Hello", "/n")
-cat(args[1], "/n")
 
 # check that the choice is valid
 is_valid_example_strategy <- function(tradingStrategy) { 
@@ -43,13 +41,11 @@ outSampledataList <- lapply(dataList, function(x)
 #ADD BACK IN TO TEST ON ALL STRATEGIES
 strategies <- suitableStratslist(inSampleDataList)
 params <- setUpTradingParams(tradingStrategy, strategies)
-print(params)
 
 market_making=list(series = c(5),lookback = c(20), liquidityThresh = 0.95, windowSize =30, highLiquidityPrdsThresh = 10, volatilityLookback = 10)
 momentum=list(series = c(4), lookback = c(12), holdingPeriod = c(12),rsiLookback = 30, emaLookback = 30, smaLookback = 30, wmaLookback = 30, maThreshold = 0.7, overboughtThresh = 60, oversoldThresh = 40, maType = "SMA")
 #mean_reversion=list(stdDev=2, series = c(6,7,8), halfLives = c(), posSizes=rep(1,10))
 load_strategy(tradingStrategy, params) # function from example_strategies.R
-
 
 sMult <- 0.20 # slippage multiplier
 results <- backtest(inSampleDataList,getOrders,params,sMult)

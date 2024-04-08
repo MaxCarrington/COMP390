@@ -94,7 +94,6 @@ detectPriceIncrease <- function(prices) {
 
 # Assuming 'series' contains Open, High, Low, Close, Volume columns
 combinedLiquidityAnalysis <- function(series, volLookback, liquidityThresh, windowSize) {
-  cat("Window size is", windowSize, "\n")
   # Step 1: Identify high volume periods
   highVolumePeriods <- highLiquidityPeriods(series, volLookback, liquidityThresh)
   # Prepare series data for liquidity estimation
