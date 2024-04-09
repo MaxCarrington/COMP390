@@ -21,17 +21,18 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     halfLife <- params$halfLives[i]
     #If enough periods have passed.
     if (store$iter > halfLife) {
-      
       #Fetch the high low and close values so fat and the half life and determine bollinger bands.
       halfLife <- params$halfLives[i]
-      cl <- newRowList[[params$series[i]]]$Close
-      hlcPrices <- store$ohlcv[[params$series[i]]][, c("High", "Low", "Close")]
+      #Ensure we are not using todays close as this is not available
+      yesterdaysCl <- tail(store$ohlcv[[seriesIndex]]$Close, 2)[1]
+      #Ensure we are not using todays data as we would not have access to this
+      hlcPrices <- head(store$ohlcv[[seriesIndex]][, c("High", "Low", "Close")], -1)
       bbands <- calculateBollingerBands(hlcPrices, halfLife, params$stdDev)
       #Buy if the bands suggest the close is below the bollinger band
-      if(cl < bbands[,"dn"]){
+      if(yesterdaysCl < bbands[,"dn"]){
         pos[params$series[i]] <- params$posSizes[params$series[i]]
       }
-      else if (cl < bbands[,"up"]){ #sell if the bands suggest the close is above the bollinger band
+      else if (yesterdaysCl < bbands[,"up"]){ #sell if the bands suggest the close is above the bollinger band
         pos[params$series[i]] <- -params$posSizes[params$series[i]]
       }
       
@@ -70,6 +71,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
 
 # Function to calculate Bollinger bands based on a lookback and standard deviation
 calculateBollingerBands <- function(hlcPrices, lookback, stdDev) {
+  
   if (is.xts(hlcPrices) && all(c("High", "Low", "Close") %in% colnames(hlcPrices))) {
     bbands <- BBands(HLC = hlcPrices, n = lookback, sd = stdDev)
     return(bbands)
@@ -96,12 +98,18 @@ initStore <- function(newRowList, series) {
 
 updateStore <- function(store, newRowList, series) {
   store$iter <- store$iter + 1
+  
   for (s in series) {
-    if (!is.null(newRowList[[s]])) {
-      store$ohlcv[[s]] <- rbind(store$ohlcv[[s]], newRowList[[s]])
+    newDataRow <- newRowList[[s]]
+    
+    if (!is.null(newDataRow) && inherits(newDataRow, "xts")) {
+      store$ohlcv[[s]] <- rbind(store$ohlcv[[s]], newDataRow)
+    } else {
+      warning(paste("Data for series", s, "is not in correct xts format or is missing. Skipping update for this series."))
     }
   }
   
   return(store)
 }
+
 #-------------------------------------------------------------------------------

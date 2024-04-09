@@ -30,6 +30,7 @@ stopifnot(is_valid_example_strategy(tradingStrategy))
 # split data in two (e.g. for in/out test)
 numDays <- nrow(dataList[[1]])
 inSampDays <- 560
+#inSampDays <- 560
 
 # in-sample period
 inSampleDataList <- lapply(dataList, function(x) x[1:inSampDays])
@@ -42,9 +43,9 @@ outSampledataList <- lapply(dataList, function(x)
 strategies <- suitableStratslist(inSampleDataList)
 params <- setUpTradingParams(tradingStrategy, strategies)
 
-market_making=list(series = c(5),lookback = c(20), liquidityThresh = 0.95, windowSize =30, highLiquidityPrdsThresh = 10, volatilityLookback = 10)
-momentum=list(series = c(4), lookback = c(12), holdingPeriod = c(12),rsiLookback = 30, emaLookback = 30, smaLookback = 30, wmaLookback = 30, maThreshold = 0.7, overboughtThresh = 60, oversoldThresh = 40, maType = "SMA")
-#mean_reversion=list(stdDev=2, series = c(6,7,8), halfLives = c(), posSizes=rep(1,10))
+market_making=list(series = c(5),lookback = c(20), liquidityThresh = 0.95, windowSize =30, highLiquidityPrdsThresh = 10, volatilityLookback = 10, tradeHistory = list(wins = numeric(), losses = numeric()))
+momentum=list(series = c(4), lookback = c(12), holdingPeriod = c(12),rsiLookback = c(30), emaLookback = c(30), smaLookback = c(30), wmaLookback = c(30), maThreshold = 0.7, overboughtThresh = 60, oversoldThresh = 40, maType = "SMA",tradeHistory = list(wins = numeric(), losses = numeric()))
+mean_reversion=list(stdDev=2, series = c(6,7,8), halfLives = c(48, 42, 50), posSizes=rep(1,10),tradeHistory = list(wins = numeric(), losses = numeric()))
 load_strategy(tradingStrategy, params) # function from example_strategies.R
 
 sMult <- 0.20 # slippage multiplier

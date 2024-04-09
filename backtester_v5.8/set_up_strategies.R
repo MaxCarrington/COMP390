@@ -3,7 +3,6 @@
 # This file analyses the time series to determine what time series to apply a strategy to. After time series
 # have been analysed, the parameters are set up for each strategy.
 #-------------------------------------------------------------------------------
-
 source('./StratsDataAnalysis/master_analysis.R')
 source('./example_strategies.R');
 suitableStratslist <- function(inSampleDataList){
@@ -90,8 +89,7 @@ getMeanRevInfo <- function(seriesAnalysisInfo){
   # Get the corresponding half life for each mean reverting time series
   halfLives <- sapply(seriesAnalysisInfo, function(x){
     if(x$strategy == "Mean-Reversion"){
-      x$meanReversion$attributes$HalfLife$HalfLife_WithIntercept
-      print(x$meanReversion$attributes$HalfLife$HalfLife_WithIntercept)
+      round(x$meanReversion$attributes$HalfLife$HalfLife_WithIntercept)
     }
     else
       NA
@@ -112,7 +110,6 @@ getMomentumInfo <- function(seriesAnalysisInfo){
   momentumLookbacks <- sapply(seriesAnalysisInfo, function(x){
     if(x$strategy == "Momentum"){
       x$momentum$correlations$lookback
-      print(x$momentum$correlations$lookback)
     }
     else
       NA
@@ -205,7 +202,8 @@ setUpTradingParams <- function(tradingStrategy, strategies){
                    maThreshold = 0.7, 
                    overboughtThresh = 60, 
                    oversoldThresh = 40, 
-                   maType = "SMA"))
+                   maType = "SMA"
+                   ))
     }
     else{
       cat("Momentum strategy can not run. No series are deemed suitable.", "\n")

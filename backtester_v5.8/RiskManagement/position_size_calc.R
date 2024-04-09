@@ -29,14 +29,22 @@ updateWinLossRatio <- function(newRatio) {
 
 #Analyses previous trades, updating the W and R in the kelly formula 
 analysePreviousTrades <- function(previousTrades){
-  positiveTrades <- previousTrades$wins
-  negativeTrades <- previousTrades$losses
-  #Any number above 0.50 is a good winProb
-  winProb <- length(positiveTrades) / (length(positiveTrades) + length(negativeTrades))
-  winLossRatio <- mean(positiveTrades)/ -mean(negativeTrades) #maybe remove the negative symbol
+  
+  if(length(previousTrades$wins) == 0) {
+    winProb <- 0  # No wins means 0% win probability
+    winLossRatio <- 100  # Arbitrarily high win/loss ratio when no wins
+  } else if(length(previousTrades$losses) == 0) {
+    winProb <- 1  # 100 percent win prob as 0 losses
+    winLossRatio <- 100  # Very high ratio
+  } else {
+    winProb <- length(previousTrades$wins) / (length(previousTrades$wins) + length(previousTrades$losses))
+    winLossRatio <- mean(previousTrades$wins) / -mean(previousTrades$losses)
+  }
   updateProbability(winProb)
   updateWinLossRatio(winLossRatio)
 }
+
+
 
 
 #-------------------------------------------------------------------------------

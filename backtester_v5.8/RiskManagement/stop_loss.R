@@ -1,4 +1,4 @@
-half lsource('./Indicators/average_true_range.R')
+source('./Indicators/average_true_range.R')
 source('./Indicators/volatility_index.R')
 source('./Indicators/half_life_of_mean_reversion.R')
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------
