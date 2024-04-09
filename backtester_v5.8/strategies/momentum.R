@@ -144,6 +144,7 @@ updateTradeHistory <- function(store, profit) {
 incrementHoldingPeriods <- function(store, seriesIndex){
   for(i in 1:length(store$tradeRecords[[seriesIndex]])) {
     #print(store$tradeRecords[[seriesIndex]][[i]]$closed)
+    
     if(!store$tradeRecords[[seriesIndex]][[i]]$closed)
       store$tradeRecords[[seriesIndex]][[i]]$holdingPeriod <- store$tradeRecords[[seriesIndex]][[i]]$holdingPeriod + 1
       #print(store$tradeRecords[[seriesIndex]][[i]]$holdingPeriod)
