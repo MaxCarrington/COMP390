@@ -69,12 +69,12 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       #If the market is overbought and we are in an uptrend and todays open is higher than yesterdays days open
       if(overbought && upTrend && openCloseDiff > 0){
         entryPrice <- newRowList[[seriesIndex]]$Open
-        store <- createTradeRecords(store, seriesIndex, positionSize, entryPrice, "buy")
+        store <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "buy")
         pos[seriesIndex] <- positionSize # Buy signal
       }
       else if(oversold && downTrend && openCloseDiff < 0){#If the market is oversold and we are in a downtrend and todays open is lower than yeserdays open
         entryPrice <- newRowList[[seriesIndex]]$Open
-        store <- createTradeRecords(store, seriesIndex, positionSize, entryPrice, "sell") 
+        store <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "sell") 
         pos[seriesIndex] <- -positionSize #Sell signal
       } else{
         pos[seriesIndex] <- 0
@@ -92,7 +92,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
 }
 
 # Keeps a record of trades, this is used in positionSizing
-createTradeRecords <- function(store, seriesIndex, positionSize, entryPrice, tradeType) {
+createTradeRecord <- function(store, seriesIndex, positionSize, entryPrice, tradeType) {
   
   latestDate <- index(last(store$ohlcv[[seriesIndex]]))
 
@@ -107,6 +107,7 @@ createTradeRecords <- function(store, seriesIndex, positionSize, entryPrice, tra
     exitPrice = 0
   )
   store$tradeRecords[[seriesIndex]] <- c(store$tradeRecords[[seriesIndex]], list(tradeRecord))
+  print(store$tradeRecords[[seriesIndex]])
   return(store)
 }
 #Closes a trade record
@@ -274,7 +275,7 @@ isTrendingDown <- function(movingAverage, lookback, threshold){
 #Initilaises the store
 initStore <- function(newRowList, series) {
   ohlcvStore <- list()
-  tradeRecords <- list()
+  tradeRecords <- vector("list", length = 10)
   tradeHistory <- list(wins = numeric(0), losses = numeric(0))
   for (s in series) {
     ohlcvStore[[s]] <- xts(matrix(numeric(0), ncol = 5, dimnames = list(NULL, c("Open", "High", "Low", "Close", "Volume"))),
