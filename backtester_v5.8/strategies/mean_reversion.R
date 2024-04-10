@@ -43,7 +43,6 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       store <- updateEntryPrices(store, newRowList, params$series)
     }
     positionSize <- kellyFormulaPosSize(positionSize, store, info, todaysOpen)
-    
     #If enough periods have passed.
     if(length(store$tradeRecords[[seriesIndex]]) > 0){
       #Increment all open positions by 1
@@ -53,14 +52,14 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       store <- close$store
       #print(store$tradeRecords)
       if(close$position){# If we need to close the position
-        pos[seriesIndex] <- -currentPos[seriesIndex] # Close the position
-        
+        ifelse(close$tradeType == "buy",
+               pos[seriesIndex] <- -close$size, # Close the buy position by selling off
+               pos[seriesIndex] <- -close$size)
       }
       
        
     }
-    if(halfLife < 0)
-      print("Error: Half life is less than 0")
+    
     if (store$iter > halfLife) {
       #Ensure we are not using todays data as we would not have access to this
       hlcPrices <- head(store$ohlcv[[seriesIndex]][, c("High", "Low", "Close")], -1)
