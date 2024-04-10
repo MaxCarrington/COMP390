@@ -22,6 +22,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     print(length(store$tradeHistory$losses))
     print("Number of trades: ")
     print(store$tradeCount)
+    print(info)
   }
   if(store$iter == 558){
     for (x in 1:length(params$series)){
@@ -42,7 +43,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     if(length(store$tradeRecords[[seriesIndex]]) > 0){
       store <- updateEntryPrices(store, newRowList, params$series)
     }
-    positionSize <- kellyFormulaPosSize(positionSize, store, info, todaysOpen)
+    #positionSize <- kellyFormulaPosSize(positionSize, store, info, todaysOpen)
     #If enough periods have passed.
     if(length(store$tradeRecords[[seriesIndex]]) > 0){
       #Increment all open positions by 1
@@ -55,6 +56,12 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
         ifelse(close$tradeType == "buy",
                pos[seriesIndex] <- -close$size, # Close the buy position by selling off
                pos[seriesIndex] <- -close$size)
+      }else{
+        orderSize <- checkTakeProfits(store, todaysOpen, seriesIndex)
+        if(length(orderSize) > 0){
+          pos[seriesIndex] <- sum(orderSize)
+          print("Hit")
+        }
       }
       
        
@@ -84,7 +91,37 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
               limitOrders1=allzero,limitPrices1=allzero,
               limitOrders2=allzero,limitPrices2=allzero))
 }
-
+checkTakeProfits <- function(store, todaysOpen, seriesIndex){
+  positionSize <- c()
+  tradeRecord <- store$tradeRecords[[seriesIndex]]
+  for(i in 1:length(tradeRecord)){
+    tradeEntryPrice <- tradeRecord[[i]]$entryPrice
+    takeProfit <- tradeRecord[[i]]$takeProfit
+    orderType <- tradeRecord[[i]]$tradeType
+    #if(tradeEntryPrice[1,1] != todaysOpen){
+      #print("New Trade-----------------------------")
+      #print(paste("Entry Price:", tradeEntryPrice[1, 1]))
+      #print(paste("Order type:", orderType))
+      #print(paste("Todays Open:", todaysOpen))
+      #print(paste("Take Profit:", takeProfit))
+      #print("-----------------------------")
+      #print(" ")
+    #}
+    #print(orderType)
+    #if(orderType == "buy"){
+      #print(todaysOpen - takeProfit)
+    #}else{
+      #print(takeProfit - todaysOpen)
+    #}
+    if(orderType == "buy" && todaysOpen >= takeProfit){
+      positionSize <- c(positionSize, -tradeRecord[[i]]$positionSize)
+      
+    } else if(orderType == "sell" && todaysOpen <= takeProfit){
+      positionSize <- c(positionSize, -tradeRecord[[i]]$positionSize)
+    }
+    return(positionSize)
+  }
+}
 kellyFormulaPosSize <- function(positionSize, store, info, todaysOpen){
   #Determine position size based on the kelly formula-
   positionRatio <- 0.1 #Default position size
@@ -145,9 +182,9 @@ updateStore <- function(store, newRowList, series) {
 calculateTakeProfit <- function(tradeType, entryPrice){
   #priceChange <- priceChangeSinceHalfLife  MAYBE IMPLEMENT THIS LATER
   if(tradeType == "buy"){
-    exitPrice <- entryPrice * 1.5
+    exitPrice <- entryPrice * 1.25
   }else{ #Must be a sell
-    exitPrice <- entryPrice * 0.5
+    exitPrice <- entryPrice * 0.75
   }
   return(exitPrice)
 }
