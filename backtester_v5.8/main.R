@@ -41,6 +41,7 @@ stopifnot(is_valid_example_strategy(tradingStrategy))
 
 # split data in two (e.g. for in/out test)
 numDays <- nrow(dataList[[1]])
+print("Testing")
 inSampDays <- 560
 #inSampDays <- 560
 
