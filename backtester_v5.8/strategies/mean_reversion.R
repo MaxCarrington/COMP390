@@ -42,7 +42,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     if(length(store$tradeRecords[[seriesIndex]]) > 0){
       store <- updateEntryPrices(store, newRowList, params$series)
     }
-    #positionSize <- kellyFormulaPosSize(positionSize, store, info, todaysOpen)
+    positionSize <- kellyFormulaPosSize(positionSize, store, info, todaysOpen)
     
     #If enough periods have passed.
     if(length(store$tradeRecords[[seriesIndex]]) > 0){
