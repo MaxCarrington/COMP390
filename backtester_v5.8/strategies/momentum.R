@@ -107,7 +107,6 @@ createTradeRecord <- function(store, seriesIndex, positionSize, entryPrice, trad
     exitPrice = 0
   )
   store$tradeRecords[[seriesIndex]] <- c(store$tradeRecords[[seriesIndex]], list(tradeRecord))
-  print(store$tradeRecords[[seriesIndex]])
   return(store)
 }
 #Closes a trade record
@@ -198,6 +197,9 @@ isRSIOverbought <- function(rsi, overboughtThresh){
 #Below functions calculate the desired indicator based on a lookback
 
 calculateRSI <- function(series, lookback){
+  if(lookback < 0)
+    print("Error, Lookback is empty")
+  print(lookback)
   if(lookback == nrow(series))
     lookback <- lookback - 1
     

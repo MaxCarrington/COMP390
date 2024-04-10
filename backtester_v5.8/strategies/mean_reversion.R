@@ -58,7 +58,8 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       
        
     }
-    
+    if(halfLife < 0)
+      print("Error: Half life is less than 0")
     if (store$iter > halfLife) {
       #Ensure we are not using todays data as we would not have access to this
       hlcPrices <- head(store$ohlcv[[seriesIndex]][, c("High", "Low", "Close")], -1)
