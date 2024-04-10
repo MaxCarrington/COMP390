@@ -201,6 +201,11 @@ updateStore <- function(store, newRowList, params) {
       store$ohlcv[[i]] <- rbind(store$ohlcv[[i]], newRowList[[i]])
       
       #Ensures that there are enough periods for the lookback
+      if((params$lookback || params$volatilityLookback) < 0){
+        print("ERROR!!!!!!!!!!!!!!!!!")
+        print(params$lookback)
+        print(params$volatilityLookback)
+      }
       if(store$iter > max(params$lookback, params$volatilityLookback)){
         
         #Calculate new volatility, liquidity and spread. 
