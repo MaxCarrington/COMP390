@@ -13,33 +13,55 @@ source('./set_up_strategies.R')
 dataList <- getData(directory="PART1")
 
 # strategy will be passed in as a command line argument from jenkins
-#mean_reversion = list(stdDev=2, series = c(6,7,8), halfLives = c(48, 42, 50),tradeHistory = list(wins = numeric(), losses = numeric()))
-#market_making=list(series = c(5),lookback = c(20), liquidityThresh = 0.95, windowSize =30, highLiquidityPrdsThresh = 10, volatilityLookback = 10, tradeHistory = list(wins = numeric(), losses = numeric()))
-#momentum=list(series = c(4), lookback = c(12), holdingPeriod = c(12),rsiLookback = c(30), emaLookback = c(30), smaLookback = c(30), wmaLookback = c(30), maThreshold = 0.7, overboughtThresh = 60, oversoldThresh = 40, maType = "SMA",tradeHistory = list(wins = numeric(), losses = numeric()))
 args <- commandArgs(trailingOnly = TRUE)
+#Used for testing purposes ONLY-------------------------------------------------
 strategies <- list(meanReversion = "mean_reversion",
                    momentum = "momentum",
                    marketMaking = "market_making")
-params <- list()
-if (length(args) < 1) {
-  tradingStrategy <- strategies$momentum
+getParams <- function(tradingStrategy){
+  params <- list()
   if(tradingStrategy == strategies$meanReversion)
-    params <- list(stdDev=2, series = c(6,7,8), halfLives = c(48, 42, 50),tradeHistory = list(wins = numeric(), losses = numeric()))
+    params <- list(stdDev=2, 
+                   series = c(6,7,8), 
+                   halfLives = c(48, 42, 50),
+                   tradeHistory = list(wins = numeric(), losses = numeric()), 
+                   limitOrderIter = 0)
   else if(tradingStrategy == strategies$momentum)
-    params <- list(series = c(4), lookback = c(12), holdingPeriod = c(12),rsiLookback = c(30), emaLookback = c(30), smaLookback = c(30), wmaLookback = c(30), maThreshold = 0.7, overboughtThresh = 60, oversoldThresh = 40, maType = "SMA",tradeHistory = list(wins = numeric(), losses = numeric()))
+    params <- list(series = c(4), 
+                   lookback = c(24), 
+                   holdingPeriod = c(12),
+                   rsiLookback = c(30), 
+                   emaLookback = c(30), 
+                   smaLookback = c(30), 
+                   wmaLookback = c(30), 
+                   maThreshold = 0.7, 
+                   overboughtThresh = 60, 
+                   oversoldThresh = 40, 
+                   maType = "WMA",
+                   tradeHistory = list(wins = numeric(), losses = numeric())
+    )
   else if(tradingStrategy == strategies$marketMaking)
-    params <- list(series = c(5),lookback = c(20), liquidityThresh = 0.95, windowSize =30, highLiquidityPrdsThresh = 10, volatilityLookback = 10, tradeHistory = list(wins = numeric(), losses = numeric()))
-} else{
- tradingStrategy <- args[1]
- if(args[1] == strategies$meanReversion)
-   params <- list(stdDev=2, series = c(6,7,8), halfLives = c(48, 42, 50),tradeHistory = list(wins = numeric(), losses = numeric()))
- else if(args[1] == strategies$momentum)
-   params <-list(series = c(4), lookback = c(12), holdingPeriod = c(12),rsiLookback = c(30), emaLookback = c(30), smaLookback = c(30), wmaLookback = c(30), maThreshold = 0.7, overboughtThresh = 60, oversoldThresh = 40, maType = "SMA",tradeHistory = list(wins = numeric(), losses = numeric()))
- else if(args[1] == strategies$marketMaking)
-   params <- list(series = c(5),lookback = c(20), liquidityThresh = 0.95, windowSize =30, highLiquidityPrdsThresh = 10, volatilityLookback = 10, tradeHistory = list(wins = numeric(), losses = numeric()))
- 
+    params <- list(series = c(5),
+                   lookback = c(20),
+                   liquidityThresh = 0.95,
+                   windowSize =30,
+                   highLiquidityPrdsThresh = 10,
+                   volatilityLookback = 10,
+                   tradeHistory = list(wins = numeric(), losses = numeric())
+    )
+  return(params)
 }
 
+params <- list()
+params <- getParams("mean_reversion")
+if (length(args) < 1) {
+  tradingStrategy <- strategies$momentum
+  params <- getParams(tradingStrategy)
+} else{
+ tradingStrategy <- args[1]
+ params <- getParams(tradingStrategy)
+}
+#-------------------------------------------------------------------------------
 # check that the choice is valid
 is_valid_example_strategy <- function(tradingStrategy) { 
   tradingStrategy %in% example_strategies
@@ -78,3 +100,4 @@ for (i in 1:length(results$pnlList)) {
 #Print the final account balance
 final_balance <- pfolioPnL$pfoliosPnL$CumPnL[nrow(pfolioPnL$pfoliosPnL)]
 cat("Portfolio Profit and Loss: ", round(final_balance, digits=2), "\n")
+
