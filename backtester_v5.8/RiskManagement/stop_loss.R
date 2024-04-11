@@ -1,9 +1,9 @@
 source('./Indicators/average_true_range.R')
 source('./Indicators/volatility_index.R')
 source('./Indicators/half_life_of_mean_reversion.R')
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Mean Reverting Stop Losses
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 # Multiple of half-life as Stop Loss, use a multiplier (typically 2-3 times its half life) with the half life, If the time exceeds the half life, then
 # the stop loss will be triggered
@@ -16,7 +16,8 @@ halfLifeStopL <- function(multiplier, halfLife, daysInTrade){
     
 }
 
-# Regime change indicator. If there is a significant change in the market, the mean-reverting behavior may have ended, therefore prompt stop loss
+# Regime change indicator. If there is a significant change in the market, the 
+# mean-reverting behavior may have ended, therefore prompt stop loss
 # OPTIMISE THIS, TO SIGNIFY A CHANGE IN MARKET CONDITIONS
 # - How are the thresholds defined?
 marketShiftStopL <- function(series, currentDay, lookback, atrThresh, vixThresh, volThresh){
@@ -30,7 +31,8 @@ marketShiftStopL <- function(series, currentDay, lookback, atrThresh, vixThresh,
   
 }
 
-# Checks the change in volume. If there is a significant change in volume between the current day and the average volume of the lookback period, the change
+# Checks the change in volume. If there is a significant change in volume between 
+# the current day and the average volume of the lookback period, the change
 # will be returned. If there is no significant change, then 0 is returned.
 # HOW IS THE THRESHOLD DETERMINED? ADD IN THRESHOLD FUNCTIONALITY
 checkVolumeChange <- function(series, currentDay, lookback, threshold){
@@ -45,11 +47,12 @@ checkVolumeChange <- function(series, currentDay, lookback, threshold){
     return(0)
   }
 }
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Market Making Stop Losses
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
-# Inventory based stop loss - If inventory gets too high, trigger stop loss (should result in a market order being placed)
+# Inventory based stop loss - If inventory gets too high, trigger stop loss 
+# (should result in a market order being placed)
 inventoryStopL <- function(threshold, positions){
   if(length(positions) > threshold){
     stopLossTriggered <- TRUE
@@ -59,9 +62,9 @@ inventoryStopL <- function(threshold, positions){
   return(stopLossTriggered)
 }
 
-# Volatility Adjusted stop loss - Using ATR/VIX to set a responsive stop loss based on the market conditions
-# CHANGE THIS, WHAT WOULD BE THE BEST WAY TO IMPLEMENT THE VOLATILITY CHANGE? WHAT WOULD BE A GOOD WAY TO COMPARE
-# THE ATR AND THE VIX 
+# Volatility Adjusted stop loss - Using ATR/VIX to set a responsive stop loss 
+# based on the market conditions
+#FIX THIS TO USE WHAT WE HAVE USED
 volatilityStopL <- function(series, lookback, previousVolatility, threshold){
   atr <- calculateTrueRange(series, lookback)
   vix <- annualisation(series, lookback)
@@ -85,9 +88,9 @@ timeBasedStopL <- function(tradeTime, threshold){
   }
 }
 
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Momentum Stop Losses - Improve
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Trailing Stop loss - Secures profits while allowing momentum to continue
 
 trailingStopL <- function(series, entryPrice, trailPercent){
@@ -105,9 +108,9 @@ trailingStopL <- function(series, entryPrice, trailPercent){
   }
   return(stopLossTriggered)
 }
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Momentum Stop Losses - Improve
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 
 standardStopL <- function(stopLossPrice, currentTradePrice, direction){
   
@@ -120,10 +123,10 @@ standardStopL <- function(stopLossPrice, currentTradePrice, direction){
   return (stopLossTriggered)
 }
 
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # Maximum daily loss
 # The maximum daily loss is the maximum allowable loss a trade can make in a day 
-#---------------------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # currentBalance should look something like this: pfolioPnL$pfoliosPnL$CumPnL[nrow(pfolioPnL$pfoliosPnL)]
 maxDailyLossOfTrade <- function(currentPrice, entryPrice, currentBalance, currentPositions, direction) {
   stopLossTriggered <- FALSE
@@ -144,7 +147,36 @@ maxDailyLossOfTrade <- function(currentPrice, entryPrice, currentBalance, curren
   
   return(stopLossTriggered)
 }
+#-------------------------------------------------------------------------------
+#Basic stop losses
+#-------------------------------------------------------------------------------
 
-
+#Set to half of the take profit so far
+calculateStopLoss <- function(tradeType, entryPrice){
+  if(tradeType == "buy"){
+    stopLoss <- entryPrice * 0.875
+  }else{ #Must be a sell
+    stopLoss <- entryPrice * 1.125
+  }
+  return(coredata(stopLoss))
+}
+#This function checks if stop losses have been hit, if they have, add them to a 
+# position so the trade is cancelled
+checkStopLossesHit <- function(store, todaysOpen, seriesIndex){
+  positionSize <- c()
+  tradeRecord <- store$tradeRecords[[seriesIndex]]
+  for(i in 1:length(tradeRecord)){
+    tradeEntryPrice <- tradeRecord[[i]]$entryPrice
+    stopLoss <- tradeRecord[[i]]$stopLoss
+    orderType <- tradeRecord[[i]]$tradeType
+    if(orderType == "buy" && todaysOpen <= stopLoss){
+      positionSize <- c(positionSize, -tradeRecord[[i]]$positionSize)
+      
+    } else if(orderType == "sell" && todaysOpen >= stopLoss){
+      positionSize <- c(positionSize, tradeRecord[[i]]$positionSize)
+    }
+  }
+  return(positionSize)
+}
 
 

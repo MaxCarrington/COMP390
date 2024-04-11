@@ -43,8 +43,18 @@ analysePreviousTrades <- function(previousTrades){
   updateProbability(winProb)
   updateWinLossRatio(winLossRatio)
 }
-
-
+kellyFormulaPosSize <- function(positionSize, store, info, todaysOpen){
+  #Determine position size based on the kelly formula-
+  positionRatio <- 0.1 #Default position size
+  if(length(store$tradeHistory$wins) + length(store$tradeHistory$losses) > 0){
+    analysePreviousTrades(store$tradeHistory)
+    positionRatio <- calculatePositionSize() #The position size is dynamically calcualted based on the Kelly formula
+  }
+  
+  positionSize <- info$balance * positionRatio
+  positionSize <- floor(positionSize / todaysOpen)
+  return(positionSize)
+}
 
 
 #-------------------------------------------------------------------------------

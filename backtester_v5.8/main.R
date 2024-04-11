@@ -53,9 +53,8 @@ getParams <- function(tradingStrategy){
 }
 
 params <- list()
-params <- getParams("mean_reversion")
 if (length(args) < 1) {
-  tradingStrategy <- strategies$momentum
+  tradingStrategy <- strategies$meanReversion
   params <- getParams(tradingStrategy)
 } else{
  tradingStrategy <- args[1]
