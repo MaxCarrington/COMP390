@@ -17,17 +17,25 @@ dataList <- getData(directory="PART1")
 #market_making=list(series = c(5),lookback = c(20), liquidityThresh = 0.95, windowSize =30, highLiquidityPrdsThresh = 10, volatilityLookback = 10, tradeHistory = list(wins = numeric(), losses = numeric()))
 #momentum=list(series = c(4), lookback = c(12), holdingPeriod = c(12),rsiLookback = c(30), emaLookback = c(30), smaLookback = c(30), wmaLookback = c(30), maThreshold = 0.7, overboughtThresh = 60, oversoldThresh = 40, maType = "SMA",tradeHistory = list(wins = numeric(), losses = numeric()))
 args <- commandArgs(trailingOnly = TRUE)
+strategies <- list(meanReversion = "mean_reversion",
+                   momentum = "momentum",
+                   marketMaking = "market_making")
 params <- list()
 if (length(args) < 1) {
-  tradingStrategy <- "mean_reversion"
-  params <- list(stdDev=2, series = c(6,7,8), halfLives = c(48, 42, 50),tradeHistory = list(wins = numeric(), losses = numeric()))
+  tradingStrategy <- strategies$momentum
+  if(tradingStrategy == strategies$meanReversion)
+    params <- list(stdDev=2, series = c(6,7,8), halfLives = c(48, 42, 50),tradeHistory = list(wins = numeric(), losses = numeric()))
+  else if(tradingStrategy == strategies$momentum)
+    params <- list(series = c(4), lookback = c(12), holdingPeriod = c(12),rsiLookback = c(30), emaLookback = c(30), smaLookback = c(30), wmaLookback = c(30), maThreshold = 0.7, overboughtThresh = 60, oversoldThresh = 40, maType = "SMA",tradeHistory = list(wins = numeric(), losses = numeric()))
+  else if(tradingStrategy == strategies$marketMaking)
+    params <- list(series = c(5),lookback = c(20), liquidityThresh = 0.95, windowSize =30, highLiquidityPrdsThresh = 10, volatilityLookback = 10, tradeHistory = list(wins = numeric(), losses = numeric()))
 } else{
  tradingStrategy <- args[1]
- if(args[1] == "mean_reversion")
+ if(args[1] == strategies$meanReversion)
    params <- list(stdDev=2, series = c(6,7,8), halfLives = c(48, 42, 50),tradeHistory = list(wins = numeric(), losses = numeric()))
- else if(args[1] == "momentum")
+ else if(args[1] == strategies$momentum)
    params <-list(series = c(4), lookback = c(12), holdingPeriod = c(12),rsiLookback = c(30), emaLookback = c(30), smaLookback = c(30), wmaLookback = c(30), maThreshold = 0.7, overboughtThresh = 60, oversoldThresh = 40, maType = "SMA",tradeHistory = list(wins = numeric(), losses = numeric()))
- else if(args[1] == "market_making")
+ else if(args[1] == strategies$marketMaking)
    params <- list(series = c(5),lookback = c(20), liquidityThresh = 0.95, windowSize =30, highLiquidityPrdsThresh = 10, volatilityLookback = 10, tradeHistory = list(wins = numeric(), losses = numeric()))
  
 }
@@ -41,7 +49,6 @@ stopifnot(is_valid_example_strategy(tradingStrategy))
 
 # split data in two (e.g. for in/out test)
 numDays <- nrow(dataList[[1]])
-print("Testing")
 inSampDays <- 560
 #inSampDays <- 560
 
@@ -60,7 +67,7 @@ outSampledataList <- lapply(dataList, function(x)
 load_strategy(tradingStrategy, params) # function from example_strategies.R
 
 sMult <- 0.20 # slippage multiplier
-results <- backtest(outSampledataList,getOrders,params,sMult)
+results <- backtest(inSampleDataList,getOrders,params,sMult)
 pfolioPnL <- plotResults(dataList,results,plotType='ggplot2')
 
 for (i in 1:length(results$pnlList)) {

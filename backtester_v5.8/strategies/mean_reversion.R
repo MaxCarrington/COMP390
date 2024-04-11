@@ -9,7 +9,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   
   positionSize <- 1
   allzero  <- rep(0,length(newRowList)) # used for initializing vectors
-
+  
   if (is.null(store))
     store <- initStore(newRowList, params$series)
   
@@ -30,7 +30,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       print(length(store$tradeRecords[[seriesIndex]]))
     }
   }
-
+  
   #Iterate through each suitable series.
   for (i in 1:length(params$series)) {
     #Get information about which series, the half Life duration and todays open / yesterdays close
@@ -62,12 +62,13 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
         takeProfits <- checkTakeProfits(store, todaysOpen, seriesIndex)
         if(length(takeProfits) > 0){
           adjustedPositions <- adjustedPositions + sum(takeProfits)
-          print("Hit")
+          print("Take Profit hit. Adjusting Position....")
         }
       }
       stopLosses <- checkStopLossesHit(store, todaysOpen, seriesIndex)
       if(length(stopLosses) > 0)
         adjustedPositions <- adjustedPositions + sum(stopLosses)
+        print("Stop Loss hit. Adjusting Position....")
     }
     
     if (store$iter > halfLife) {
@@ -118,25 +119,27 @@ checkTakeProfits <- function(store, todaysOpen, seriesIndex){
     takeProfit <- tradeRecord[[i]]$takeProfit
     orderType <- tradeRecord[[i]]$tradeType
     #if(tradeEntryPrice[1,1] != todaysOpen){
-      #print("New Trade-----------------------------")
-      #print(paste("Entry Price:", tradeEntryPrice[1, 1]))
-      #print(paste("Order type:", orderType))
-      #print(paste("Todays Open:", todaysOpen))
-      #print(paste("Take Profit:", takeProfit))
-      #print("-----------------------------")
-      #print(" ")
+    #print("New Trade-----------------------------")
+    #print(paste("Entry Price:", tradeEntryPrice[1, 1]))
+    #print(paste("Order type:", orderType))
+    #print(paste("Todays Open:", todaysOpen))
+    #print(paste("Take Profit:", takeProfit))
+    #print("-----------------------------")
+    #print(" ")
     #}
     #print(orderType)
     #if(orderType == "buy"){
-      #print(todaysOpen - takeProfit)
+    #print(todaysOpen - takeProfit)
     #}else{
-      #print(takeProfit - todaysOpen)
+    #print(takeProfit - todaysOpen)
     #}
     if(orderType == "buy" && todaysOpen >= takeProfit){
+      print("Hit")
       positionSize <- c(positionSize, -tradeRecord[[i]]$positionSize)
       
     } else if(orderType == "sell" && todaysOpen <= takeProfit){
-      positionSize <- c(positionSize, -tradeRecord[[i]]$positionSize)
+      print("Hit")
+      positionSize <- c(positionSize, tradeRecord[[i]]$positionSize)
     }
     return(positionSize)
   }

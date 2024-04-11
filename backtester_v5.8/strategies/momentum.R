@@ -16,38 +16,35 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   marketOrders <- -currentPos; pos <- allzero
   
   for (i in 1:length(params$series)) {
-    #Decide a 
     
-    positionRatio <- 0.1 # Default position ratio if no history available
-    if(length(store$tradeHistory$wins) + length(store$tradeHistory$losses) > 0){
-      analysePreviousTrades(store$tradeHistory)
-      positionRatio <- calculatePositionSize() #The position size is dynamically calcualted based on the Kelly formula
-    }
-    
+    #Initialise values from the store, parameters and price information
     seriesIndex <- params$series[i]
     series <- head(store$ohlcv[[seriesIndex]], -1)
-    
+    holdingPeriod <- params$holdingPeriod[[i]]
     ydaysClose <- coredata(series$Close[length(series$Close)])
     todaysOpen <- coredata(newRowList[[seriesIndex]]$Open)
-    
-    #Using the kelly formula, the size of the position is calculated by taking the amount of balance 
-    #to invest divided by the number of assets 
-    
-    positionSize <- info$balance * positionRatio
-    positionSize <- floor(positionSize / todaysOpen)
-    # Increment holding period for each open position
+    #Update the entry prices in trade records as we can only use open n + 1 for record n
+    if(length(store$tradeRecords[[seriesIndex]]) > 0){
+      store <- updateEntryPrices(store, newRowList, params$series)
+    }
+    #Initialise position adjustment factor
+    adjustedPositions <- 0
+    #If there are any trade records 
     if(length(store$tradeRecords[[seriesIndex]]) > 0){
       #Increment all open positions by 1
       store <- incrementHoldingPeriods(store, seriesIndex)
-      #Check if we should close any positions based on the lookback
-      close <- checkClosePositions(store, seriesIndex, params$holdingPeriod[[i]], positionSize, todaysOpen)
-      store <- close$store
-      #print(store$tradeRecords)
-      if(close$position)
-        pos[seriesIndex] <- -currentPos[seriesIndex] # Close the position
-    }
-    
+      
+      #Handle closing of orders, stop losses and take profits 
+      adjust <- adjustPositions(store, seriesIndex, holdingPeriod, positionSize, todaysOpen)
+      store <- adjust$updatedStore
+      adjustedPositions <- adjust$pos
+      }
     #If enough periods have passed 
+    if(length(params$lookback[[i]]) < 0)
+      print("The lookback parameter has not been initialised correctly. It has a length of: 0")
+    if(length(params$rsiLookback[[i]]) < 0)
+      print("The RSI lookback parameter has not been initialised correctly. It has a length of: 0")
+    
     if (store$iter > max(params$lookback[[i]], params$rsiLookback[[i]])){
       #Set up indicators
       rsi <- calculateRSI(series$Close, params$rsiLookback)
@@ -70,16 +67,15 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       if(overbought && upTrend && openCloseDiff > 0){
         entryPrice <- newRowList[[seriesIndex]]$Open
         store <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "buy")
-        pos[seriesIndex] <- positionSize # Buy signal
+        adjustedPositions <- adjustedPositions + positionSize # Buy signal
       }
       else if(oversold && downTrend && openCloseDiff < 0){#If the market is oversold and we are in a downtrend and todays open is lower than yeserdays open
         entryPrice <- newRowList[[seriesIndex]]$Open
         store <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "sell") 
-        pos[seriesIndex] <- -positionSize #Sell signal
-      } else{
-        pos[seriesIndex] <- 0
-      } 
+        adjustedPositions <- adjustedPositions + -positionSize #Sell signal
+      }
     }
+    pos[seriesIndex] <- adjustedPositions
   }
   #Update new market orders.
   
@@ -90,7 +86,80 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
               limitOrders2=allzero,
               limitPrices2=allzero))
 }
-
+#Adjusts positions based on stop losses and take profits and closes any positions
+adjustPositions <- function(store, seriesIndex, holdingPeriod, positionSize, todaysOpen){
+  
+  adjustedPositions <- 0
+  #Check if we should close any positions based on the lookback
+  close <- checkClosePositions(store, seriesIndex, holdingPeriod, positionSize, todaysOpen)
+  store <- close$store
+  #print(store$tradeRecords)
+  if(close$position){# If we need to close the position
+    ifelse(close$tradeType == "buy",
+           adjustedPositions <-  -close$size, # Close the buy position by selling off
+           adjustedPositions <- close$size)
+  }else{
+    takeProfits <- checkTakeProfits(store, todaysOpen, seriesIndex)
+    if(length(takeProfits) > 0){
+      adjustedPositions <- adjustedPositions + sum(takeProfits)
+      print("Take profit hit. Exiting position and taking profit...")
+    }
+  }
+  stopLosses <- checkStopLossesHit(store, todaysOpen, seriesIndex)
+  if(length(stopLosses) > 0){
+    adjustedPositions <- adjustedPositions + sum(stopLosses)
+    print("Stop Loss hit. Exiting position...")
+  }
+  return(list(updatedStore = store, pos = adjustedPositions))
+}
+#This function checks if stop losses have been hit, if they have, add them to a 
+# position so the trade is cancelled
+checkStopLossesHit <- function(store, todaysOpen, seriesIndex){
+  positionSize <- c()
+  tradeRecord <- store$tradeRecords[[seriesIndex]]
+  for(i in 1:length(tradeRecord)){
+    tradeEntryPrice <- tradeRecord[[i]]$entryPrice
+    stopLoss <- tradeRecord[[i]]$stopLoss
+    orderType <- tradeRecord[[i]]$tradeType
+    if(orderType == "buy" && todaysOpen <= stopLoss){
+      positionSize <- c(positionSize, -tradeRecord[[i]]$positionSize)
+      
+    } else if(orderType == "sell" && todaysOpen >= stopLoss){
+      positionSize <- c(positionSize, tradeRecord[[i]]$positionSize)
+    }
+  }
+  return(positionSize)
+}
+#This function checks if take profits have been hit, if they have, add them to 
+# a position to take profit
+checkTakeProfits <- function(store, todaysOpen, seriesIndex){
+  positionSize <- c()
+  tradeRecord <- store$tradeRecords[[seriesIndex]]
+  for(i in 1:length(tradeRecord)){
+    tradeEntryPrice <- tradeRecord[[i]]$entryPrice
+    takeProfit <- tradeRecord[[i]]$takeProfit
+    orderType <- tradeRecord[[i]]$tradeType
+    if(orderType == "buy" && todaysOpen >= takeProfit){
+      positionSize <- c(positionSize, -tradeRecord[[i]]$positionSize)
+      
+    } else if(orderType == "sell" && todaysOpen <= takeProfit){
+      positionSize <- c(positionSize, tradeRecord[[i]]$positionSize)
+    }
+    return(positionSize)
+  }
+}
+kellyFormulaPosSize <- function(positionSize, store, info, todaysOpen){
+  #Determine position size based on the kelly formula-
+  positionRatio <- 0.1 #Default position size
+  if(length(store$tradeHistory$wins) + length(store$tradeHistory$losses) > 0){
+    analysePreviousTrades(store$tradeHistory)
+    positionRatio <- calculatePositionSize() #The position size is dynamically calcualted based on the Kelly formula
+  }
+  
+  positionSize <- info$balance * positionRatio
+  positionSize <- floor(positionSize / todaysOpen)
+  
+}
 # Keeps a record of trades, this is used in positionSizing
 createTradeRecord <- function(store, seriesIndex, positionSize, entryPrice, tradeType) {
   
@@ -199,7 +268,7 @@ isRSIOverbought <- function(rsi, overboughtThresh){
 calculateRSI <- function(series, lookback){
   if(lookback < 0)
     print("Error, Lookback is empty")
-  print(lookback)
+  
   if(lookback == nrow(series))
     lookback <- lookback - 1
     
@@ -301,5 +370,140 @@ updateStore <- function(store, newRowList, series) {
   }
   
   return(store)
+}
+#Improve
+calculateTakeProfit <- function(tradeType, entryPrice){
+  #priceChange <- priceChangeSinceHalfLife  MAYBE IMPLEMENT THIS LATER
+  if(tradeType == "buy"){
+    exitPrice <- entryPrice * 1.25
+  }else{ #Must be a sell
+    exitPrice <- entryPrice * 0.75
+  }
+  return(exitPrice)
+}
+
+priceChangeSinceHalfLife <- function(){
+  
+}
+#Set to half of the take profit so far
+calculateStopLoss <- function(tradeType, entryPrice){
+  if(tradeType == "buy"){
+    stopLoss <- entryPrice * 0.875
+  }else{ #Must be a sell
+    stopLoss <- entryPrice * 1.125
+  }
+  return(stopLoss)
+}
+# Keeps a record of trades, this is used in positionSizing
+createTradeRecord <- function(store, seriesIndex, positionSize, entryPrice, tradeType, halfLife) {
+  
+  latestDate <- index(last(store$ohlcv[[seriesIndex]]))
+  
+  tradeRecord <- list(
+    entryDate = latestDate,
+    entryPrice = NA,
+    positionSize = positionSize,
+    tradeType = tradeType, # Record whether it's a buy or sell trade
+    closed = FALSE,
+    exitDate = NULL,
+    halfLifeHoldingPeriod = 0,
+    exitPrice = 0,
+    takeProfit = 0,
+    stopLoss = 0
+  )
+  store$tradeRecords[[seriesIndex]] <- c(store$tradeRecords[[seriesIndex]], list(tradeRecord))
+  return(store)
+}
+#Closes a trade record
+closeTradeRecord <- function(store, seriesIndex, tradeRecord, exitDate, exitPrice, positionSize){
+  slippagePercent = 0.2
+  tradeRecords <- store$tradeRecords[[seriesIndex]]
+  latestDate <- index(last(store$ohlcv[[seriesIndex]]))
+  
+  for(i in 1:length(tradeRecords)){
+    
+    if(tradeRecords[[i]]$entryDate == tradeRecord$entryDate){
+      tradeRecord$closed <- TRUE
+      tradeRecord$exitPrice <- exitPrice
+      tradeRecord$exitDate <- latestDate
+      tradeRecords[[i]] <- tradeRecord
+    }
+  }
+  store$tradeRecords[[seriesIndex]] <- tradeRecords
+  profit <- ifelse(tradeRecord$tradeType == "buy", 
+                   ((exitPrice * (1 - slippagePercent) - tradeRecord$entryPrice) * positionSize), #Long
+                   ((exitPrice * (1 + slippagePercent) - tradeRecord$exitPrice) * positionSize))#Short
+  #print(paste("Trade type:", tradeRecord$tradeType))
+  #print(paste("Entry price:", tradeRecord$entryPrice, "Exit Price:", exitPrice * (1 - slippagePercent)))
+  store <- updateTradeHistory(store, profit)
+  return(store)
+}
+# Update the entry prices as we only find out a market orders price the following day, 
+# also determine stop loss and take profit
+updateEntryPrices <- function(store, newRowList, series) {
+  for(i in 1:length(series)){
+    seriesIndex <- series[i]
+    tradeRecord <- store$tradeRecords[[seriesIndex]]
+    if(length(store$tradeRecords[[seriesIndex]]) > 0){
+      for(x in 1: length(tradeRecord)){
+        tradeRecord <- store$tradeRecords[[seriesIndex]][[x]]
+        # Check if entryPrice needs updating (if it's NA)
+        if (is.na(tradeRecord$entryPrice)) {
+          todaysOpen <- coredata(newRowList[[seriesIndex]]$Open)
+          tradeRecord$entryPrice <- todaysOpen
+          tradeType <- tradeRecord$tradeType
+          tradeRecord$takeProfit <- calculateTakeProfit(tradeType, todaysOpen)
+          tradeRecord$stopLoss <- calculateStopLoss(tradeType, todaysOpen)
+          store$tradeRecords[[seriesIndex]][[x]] <- tradeRecord
+        }
+      }
+    }
+    
+  }
+  return(store)
+}
+
+#Update trade history with information from profit and loss 
+updateTradeHistory <- function(store, profit) {
+  if (profit > 0) {
+    store$tradeHistory$wins <- c(store$tradeHistory$wins, profit)
+  } else if (profit < 0) {
+    store$tradeHistory$losses <- c(store$tradeHistory$losses, profit)
+  }
+  return(store)
+}
+#Increment each of the trade records holding period by 1 as we are in a new day
+incrementHoldingPeriods <- function(store, seriesIndex){
+  for(i in 1:length(store$tradeRecords[[seriesIndex]])) {
+    #print(store$tradeRecords[[seriesIndex]][[i]]$closed)
+    
+    if(!store$tradeRecords[[seriesIndex]][[i]]$closed)
+      store$tradeRecords[[seriesIndex]][[i]]$halfLifeHoldingPeriod <- store$tradeRecords[[seriesIndex]][[i]]$halfLifeHoldingPeriod + 1
+    #print(store$tradeRecords[[seriesIndex]][[i]]$halfLifeHoldingPeriod)
+  }
+  return(store)
+}
+#Check if enough days have passed to close a position
+checkClosePositions <- function(store, seriesIndex, halfLifeHoldingPeriod, positionSize, todaysOpen, currentPos){
+  position <- FALSE
+  type <- ""
+  size <- 0
+  latestDate <- index(last(store$ohlcv[[seriesIndex]]))
+  for(i in 1:length(store$tradeRecords[[seriesIndex]])){
+    tradeRecord <- store$tradeRecords[[seriesIndex]][[i]]
+    if(!tradeRecord$closed){
+      posDuration <- tradeRecord$halfLifeHoldingPeriod
+      if(posDuration >= halfLifeHoldingPeriod){
+        #Close the position
+        #Mark the tradeRecord as closed
+        exitDate <- latestDate
+        positionSize <- tradeRecord$positionSize
+        type <- tradeRecord$tradeType
+        store <- closeTradeRecord(store, seriesIndex, tradeRecord, exitDate, todaysOpen, positionSize)
+        position = TRUE
+      }
+    }
+  }
+  return(list(store = store, position = position, size = positionSize, tradeType = type))
 }
 #-------------------------------------------------------------------------------
