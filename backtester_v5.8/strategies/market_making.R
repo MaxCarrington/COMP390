@@ -10,7 +10,7 @@ source("StratsDataAnalysis/volume_analysis.R")
 
 
 getOrders <- function(store, newRowList, currentPos, info, params) {
-  limitOrders <- TRUE
+  limitOrders <- FALSE
   positionSize <- 1
   # Initialise the store if it has not already been initialised
   if (is.null(store))
@@ -34,7 +34,10 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       
       #Fetch the current series info
       seriesIndex <- params$series[i]
-      series <- store$ohlcv[[seriesIndex]]
+      #Ensure we are not using todays data!
+      series <- head(store$ohlcv[[seriesIndex]], -1)
+      #print(nrow(series))
+      #print(series)
 
       #Fetch the current period volatility and the series volatility from the store
       currentPeriodVol <- tail(store$periodVolatilities[[seriesIndex]], 1)
@@ -47,10 +50,11 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
         spread <-tail(store$spread[[seriesIndex]], n=1)
         
         #If a high liquidity period is detected, change order size based on the volatility of the total series
-        #Check if this day is correct or if we need to use the previous days DO!!!!!!!!
         
         highLiquidity <- highLiquidityPeriods(series, params$volumeLookback, params$liquidityThresh)
-        if(store$iter %in% highLiquidity){
+        #print(paste("High Liquidity periods:", highLiquidity))
+        #print(paste("Iteration:",store$iter))
+        if(((store$iter -1) %in% highLiquidity) || ((store$iter - 2) %in% highLiquidity)){
           direction <- determineTradeDirection(series$Close, series$Volumes, highLiquidity, params$liquidityLookback)
           if(direction != "hold"){
             orderSize <- determineOrderSize(currentPos[i], currentSeriesVol, positionSize, confidence, direction)
@@ -62,10 +66,10 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
               print("A sell order has been placed")
               pos[seriesIndex] <- -positionSize
           }
-          }
+        }
       }
     }
-    }
+  }
   }
   marketOrders = pos
   # Return updated orders and store
