@@ -38,7 +38,6 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       else #Check if limit price has been hit
         store <- checkIfLimitPriceHit(store, newRowList, params$series, seriesIndex)
     }
-    print("Hit")
     #Initialise position adjustment factor
     adjustedPositions <- 0
     #If there are any trade records 
