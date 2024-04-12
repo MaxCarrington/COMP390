@@ -60,7 +60,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     adjustedPositions <- 0
     if(length(store$tradeRecords[[seriesIndex]]) > 0){
       #Increment all open positions by 1
-      store <- incrementhalfLifeHoldingPeriods(store, seriesIndex)
+      store <- incrementHoldingPeriods(store, seriesIndex)
       
       #Handle closing of orders, stop losses and take profits 
       close <- checkClosePositions(store, seriesIndex, halfLife, positionSize, todaysOpen)
