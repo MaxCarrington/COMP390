@@ -5,12 +5,12 @@
 #   - Create a combined volatility score based on the normalised values
 #   - Define volatility thresholds
 #   - Analyse the combined score over time to identify perios of high/low volatility
-#   - correlation Analysis: Explore the correlation between ATR and VIX
-#-------------------------------------------------------------------------------
 source('./Indicators/average_true_range.R')
 source('./Indicators/volatility_index.R')
 source('./Plot/plot_volatility.R')
-
+#-------------------------------------------------------------------------------
+#Function uses Average true range, standard deviation and a volatility index to
+# determine the volatility over a given period
 analysePeriodVol <- function(series, lookback, monthly=FALSE){
   stdDev <- stdDevRollingWindow(series, lookback)
   #Standardises average true range, volatility index and standard deviation.
@@ -30,7 +30,7 @@ analysePeriodVol <- function(series, lookback, monthly=FALSE){
     monthlyVol <- c()
     
     for(i in 1:numberOfMonths){
-      monthVol <- determineSeriesVolatility(volClassifications[startOfMonthIndex:endOfMonthIndex])
+      monthVol <- determinePeriodVolatility(volClassifications[startOfMonthIndex:endOfMonthIndex])
       monthlyVol <- c(monthlyVol, monthVol)
       startOfMonthIndex <- endOfMonthIndex + 1
       endOfMonthIndex <- endOfMonthIndex + weeksInMonth
@@ -43,7 +43,11 @@ analysePeriodVol <- function(series, lookback, monthly=FALSE){
   }
   return(list(periodVol = volClassifications, seriesVol = seriesVol))
 }
+#-------------------------------------------------------------------------------
 
+#-------------------------------------------------------------------------------
+#Given the monthly volatilties, this function determines the overall volatility 
+# of a time series 
 analyseSeriesVol <- function(monthlyVolatility){
   # Define category labels
   nonVolatile = "Non-Volatile"
@@ -70,10 +74,12 @@ analyseSeriesVol <- function(monthlyVolatility){
     return(volatile)
   }
 }
+#-------------------------------------------------------------------------------
 
+#-------------------------------------------------------------------------------
+#Determines the volatility of a specific period in time
 
-
-determineSeriesVolatility <- function(classifiedVolatility) {
+determinePeriodVolatility <- function(classifiedVolatility) {
   # Count the frequency of each volatility category
   frequencyTable <- table(classifiedVolatility)
   
@@ -95,6 +101,9 @@ determineSeriesVolatility <- function(classifiedVolatility) {
   }
 }
 
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
 # Function to classify volatility periods based on percentiles and standard deviations
 classifyVolatility <- function(volatilityScores) {
   volatilityScores <- na.omit(volatilityScores)
@@ -112,9 +121,12 @@ classifyVolatility <- function(volatilityScores) {
                                     ifelse(volatilityScores > meanScore, "Medium", "Low")))
   return(classifiedScores)
 }
+#-------------------------------------------------------------------------------
 
-#Calculates volatility threshold values for a given indicator based on the current time series to determine times of high, low, medium volatility
-#Not implemented currently
+#-------------------------------------------------------------------------------
+#Calculates volatility threshold values for a given indicator based on the current 
+#time series to determine times of high, low, medium volatility
+#NOT USED ANYWHERE YET 
 volThreshs <- function(indicator){
   volatilityPeriods <- c()
   avgVol <- mean(indicator)
@@ -134,27 +146,33 @@ volThreshs <- function(indicator){
   }
   return(volatilityPeriods)
 }
+#-------------------------------------------------------------------------------
 
-#Compute mean and standard deviation for each list, and apply the zScore forumla 
+#-------------------------------------------------------------------------------
+#Computes mean and standard deviation for each list, and apply the zScore forumla 
 zScoreStandardisation <- function(indicatorValues){
   mean <- mean(indicatorValues, na.rm = TRUE)
   stdDev <- stats::sd(indicatorValues, na.rm = TRUE)
   zScore <- (indicatorValues - mean) /stdDev
   return(zScore)
 }
-#Combine the standardised std dev, atr and vix and divide by 3 to give a score
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+#Combines the standardised std dev, atr and vix and divide by 3 to give a score
 stdATRVIXStdDev <- function(standardisedATRs, standardisedVIXs, standardisedStdDev) {
   combinedScores <- (standardisedATRs + standardisedVIXs + standardisedStdDev) / 3
   
   return(combinedScores)
 }
+#-------------------------------------------------------------------------------
 
-
-
+#-------------------------------------------------------------------------------
 # Calculate the standard deviation of returns over a rolling window
 stdDevRollingWindow <- function(series, lookback){
   returns <- diff(log(ifelse(series$Close > 0, series$Close, NA)), lag = 1)
   rollingStdDev <- runSD(returns, n = lookback)
   return(rollingStdDev)
 }
+#-------------------------------------------------------------------------------
 

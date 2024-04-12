@@ -43,18 +43,24 @@ getParams <- function(tradingStrategy){
   else if(tradingStrategy == strategies$marketMaking)
     params <- list(series = c(5),
                    lookback = c(20),
-                   liquidityThresh = 0.95,
+                   liquidityThresh = 0.6,
                    windowSize =30,
                    highLiquidityPrdsThresh = 10,
                    volatilityLookback = 10,
-                   tradeHistory = list(wins = numeric(), losses = numeric())
+                   volumeLookback = 10,
+                   tradeHistory = list(wins = numeric(), losses = numeric()),
+                   initialConfidence = 0.5,
+                   liquidityLookback = 15,
+                   priceLookback = 10,
+                   volumeMultiplier = 1.1, 
+                   rangeMultiplier = 1.1
     )
   return(params)
 }
 
 params <- list()
 if (length(args) < 1) {
-  tradingStrategy <- strategies$meanReversion
+  tradingStrategy <- strategies$marketMaking
   params <- getParams(tradingStrategy)
 } else{
  tradingStrategy <- args[1]

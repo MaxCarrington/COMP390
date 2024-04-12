@@ -42,6 +42,6 @@ analyseMomentum <- function(series, windowSize, pValueThresh, lengthThresh) {
   }
 }
 #Returns liquidity information of a given time series
-analyseLiquidity <- function(series, volatilityLookback, monthly=FALSE, windowSize, volumeLookback, liquidityThresh, periodThresh){
-  return(combinedLiquidityAnalysis(series, volumeLookback, liquidityThresh, windowSize))
+analyseLiquidity <- function(series, volumeLookback, liquidityThresh, windowSize, priceLookback, volumeMultiplier, rangeMultiplier){
+  return(combinedLiquidityAnalysis(series, volumeLookback, liquidityThresh, windowSize, priceLookback, volumeMultiplier, rangeMultiplier))
 }

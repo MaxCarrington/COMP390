@@ -1,7 +1,8 @@
-#------------------------------------------------------------------------------------------------------
-# Main strategy function that operates through each series. Based on the series' market conditions,
-# volatility and liquidity, market orders are executed based on stable conditions. 
-#------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+# Main strategy function that operates through each series. Based on the series' 
+# market conditions, volatility and liquidity, market orders are executed based 
+# on stable conditions. 
+#-------------------------------------------------------------------------------
 
 source("Indicators/average_true_range.R")
 source("StratsDataAnalysis/volatility_analysis.R")
@@ -9,12 +10,11 @@ source("StratsDataAnalysis/volume_analysis.R")
 
 
 getOrders <- function(store, newRowList, currentPos, info, params) {
-  standardOrderSize <- 10 #Change this -> dynamically change the size based on the amount of money left in the account and the price of the asset in relation to this!
-  confidence <- 0.5 # Is conservative currently, change this when optimising parameters and put it as a parameter
-  liquidityLookback <- 15 #Add this into params MUST BE ODD
+  limitOrders <- TRUE
+  positionSize <- 1
   # Initialise the store if it has not already been initialised
   if (is.null(store))
-    store <- initStore(newRowList, params$series)
+    store <- initStore(newRowList, params$series, params$initialConfidence)
   
   # Update the store with the new days data 
   store <- updateStore(store, newRowList, params)    
@@ -29,40 +29,45 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     #Ensure enough days have passed based on the lookback parameter
     if(store$iter > (params$lookback)){
       
+      #Fetch the current confidence from the store
+      confidence <- store$confidence #UPDATE THIS SOMEWHERE
+      
+      #Fetch the current series info
       seriesIndex <- params$series[i]
+      series <- store$ohlcv[[seriesIndex]]
+
       #Fetch the current period volatility and the series volatility from the store
       currentPeriodVol <- tail(store$periodVolatilities[[seriesIndex]], 1)
       currentSeriesVol <- tail(store$seriesVolatilities[[seriesIndex]], 1)
-      
+  
       #If the volatility of the current lookback period is low then determine the liqudity 
       if(length(currentPeriodVol) > 0 && currentPeriodVol == "Low"){
         
         #Calculate the most recent useable liquidity and spread
-        highLiquidity <- tail(store$liquidity[[seriesIndex]], 1)
-        spread <-tail(store$spread[[seriesIndex]], 1)
-        #print(store$liquidity[[seriesIndex]])
-        #If a high liquidity period is detected, change order size based on the volatility of the total series
+        spread <-tail(store$spread[[seriesIndex]], n=1)
         
-        directionLiquidities <- tail(store$liquidity[[seriesIndex]], liquidityLookback)
-        #If we are in a period of high Liquidity, determine the trade direction and the order size and execute if
-        # determineTradeDirection does not indicate it is a bad time to trade ("hold")
-        if(highLiquidity){
-          direction <- determineTradeDirection(store$ohlcv[[seriesIndex]]$Close, store$ohlcv[[seriesIndex]]$Volumes, directionLiquidities, liquidityLookback)
+        #If a high liquidity period is detected, change order size based on the volatility of the total series
+        #Check if this day is correct or if we need to use the previous days DO!!!!!!!!
+        
+        highLiquidity <- highLiquidityPeriods(series, params$volumeLookback, params$liquidityThresh)
+        if(store$iter %in% highLiquidity){
+          direction <- determineTradeDirection(series$Close, series$Volumes, highLiquidity, params$liquidityLookback)
           if(direction != "hold"){
-            orderSize <- determineOrderSize(currentPos[i], currentSeriesVol, highLiquidity, standardOrderSize, confidence, direction)
+            orderSize <- determineOrderSize(currentPos[i], currentSeriesVol, positionSize, confidence, direction)
             closePrice <- tail(store$ohlcv[[seriesIndex]]$Close, 1)
             if (direction == "buy") {
-              limitPrices1[seriesIndex] <- closePrice - spread / 2
-              limitOrders1[seriesIndex] <- orderSize
+              print("A buy order has been placed")
+              pos[seriesIndex] <- positionSize
             } else if (direction == "sell") {
-              limitPrices2[seriesIndex] <- closePrice + spread / 2
-              limitOrders2[seriesIndex] <- orderSize
+              print("A sell order has been placed")
+              pos[seriesIndex] <- -positionSize
           }
           }
       }
     }
     }
   }
+  marketOrders = pos
   # Return updated orders and store
   return(list(store=store,marketOrders=marketOrders,
               limitOrders1=limitOrders1,
@@ -71,10 +76,12 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
               limitPrices2=limitPrices2))
 }
 
-# This function determines the direction of a trade based on an SMA and the current price in relation to this
-# SMA. If the price is greater then we are in an uptrend and if the price is lower, we are in a short term
-# downtrend. Then look at the liqudities and if the previous liquidities are higher than the current ones, liquidity is
-# increasing, otherwise it is decreasing.
+#-------------------------------------------------------------------------------
+# This function determines the direction of a trade based on an SMA and the current 
+# price in relation to this SMA. If the price is greater then we are in an uptrend 
+# and if the price is lower, we are in a short term  downtrend. Then look at the 
+# liqudities and if the previous liquidities are higher than the current ones, 
+# liquidity is increasing, otherwise it is decreasing.
 determineTradeDirection <- function(prices, volumes, liquidities, lookback = 15){
   
   liquidityThresh <- 0.4
@@ -95,7 +102,7 @@ determineTradeDirection <- function(prices, volumes, liquidities, lookback = 15)
   laterHighLiqProportion <- mean(liquidities[(splitPoint + 1):lookback])
   liquidityDirection <- ifelse(laterHighLiqProportion > earlyHighLiqProportion, "increasing", "decreasing")
   
-  print(paste("The trend direction is", trendDirection, "and the liquidity direction is", liquidityDirection))
+  print(paste("The trend direction is", trendDirection,"and the liquidity direction is", liquidityDirection))
   action <- "hold" # Hold if the trend and liquidity direction do not match
   if (trendDirection == "upwards" && liquidityDirection == "increasing") { #If liquidity and price is increasing, buy
     action <- "buy"
@@ -104,9 +111,11 @@ determineTradeDirection <- function(prices, volumes, liquidities, lookback = 15)
   }
   return(action)
 }
+#-------------------------------------------------------------------------------
 
+#-------------------------------------------------------------------------------
 # Function to calculate order size based on the parameters given.
-determineOrderSize <- function(currentPosition, volatility, liquidity, stdOrderSize, confidence, direction) {
+determineOrderSize <- function(currentPosition, volatility, stdOrderSize, confidence, direction, liquidity = TRUE) {
   volatilityAdjustment <- volAdjustment(volatility)
   liquidityAdjustment <- if (liquidity) 1.1 else 0.9
   # Used to normalise the result
@@ -123,12 +132,9 @@ determineOrderSize <- function(currentPosition, volatility, liquidity, stdOrderS
   
   return(max(min(finalOrderSize, 1000), -1000))
 }
+#-------------------------------------------------------------------------------
 
-
-limitPriceAdjustments <- function(){
-  
-}
-
+#-------------------------------------------------------------------------------
 #Adjusts the order size based on the volatility of the current series
 volAdjustment <- function(volatility){
   orderSizeAdjustment <- switch(volatility,
@@ -137,8 +143,10 @@ volAdjustment <- function(volatility){
                                 "Highly Volatile" = 0.5)
   return(orderSizeAdjustment)
 }
+#-------------------------------------------------------------------------------
 
-#REMOVE
+#-------------------------------------------------------------------------------
+#REMOVE - THIS IS NOT USED ANYMORE
 isLiquidityHigh <- function(series, storeIter, volumeLookback, thresholdPercentage = 1.75) {
   highLiquidity <- FALSE
   
@@ -160,11 +168,55 @@ isLiquidityHigh <- function(series, storeIter, volumeLookback, thresholdPercenta
   }
   return(highLiquidity)
 }
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+#Calculates the current period volatility and the current series volatility
+calculateVolatility <- function(series, storeIter, volatilityLookback){
+  
+  #Ensure we are not using todays data as this would not be available
+  useableSeries <- head(series, storeIter -1)
+  #Calculates the volatility for all of the data so far
+  volatility <- analysePeriodVol(useableSeries, volatilityLookback)
+  # Returns a list with the latest volume period and the volume over the entire period so far.
+  return(list(currPeriod = volatility$periodVol,
+              seriesVol = volatility$seriesVol))
+  
+}
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+#Calculate the spread based on the liquidity, if liquidity is high, lower the spread, otherwise incerase the spread
+calculateSpreadUsingLiquidity <- function(series, storeIter, liquidity) {
+  # Ensure there's enough data up to the current iteration
+  if (storeIter <= nrow(series)) {
+    todaysData <- series[storeIter,]
+    baseSpread <- todaysData$High - todaysData$Low
+    
+    # Check if the current period is within the high liquidity periods
+    isHighLiquidityPeriod <- storeIter %in% liquidity
+    
+    # Adjust spread based on liquidity
+    spread <- if (isHighLiquidityPeriod) {
+      baseSpread * 0.75  # Reduce spread by 25% - high liquidity
+    } else {
+      baseSpread * 1.25  # Increase spread by 25% - other liquidities
+    }
+  } else {
+    spread <- NA  # Default to NA if there's no data for the current period
+    print("There is no liqudity data relating to the current period")
+  }
+  
+  return(spread)
+}
+
+#-------------------------------------------------------------------------------
 
 
-
+#-------------------------------------------------------------------------------
+#Functions for managing tif (liquidity)he store
 #Initialises the store 
-initStore <- function(newRowList, series) {
+initStore <- function(newRowList, series, initConfidence) {
   ohlcvStore <- list()
   count <- vector("numeric", length(series))
   periodVolatilities <- vector("list", length(series))
@@ -188,30 +240,34 @@ initStore <- function(newRowList, series) {
               periodVolatilities = periodVolatilities, 
               liquidity = liquidity, 
               spreads = spreads,
-              seriesVolatilities = seriesVolatilities))
+              seriesVolatilities = seriesVolatilities,
+              confidence = initConfidence))
 }
 
 
 #Updates the store.
 updateStore <- function(store, newRowList, params) {
   store$iter <- store$iter + 1
+  #Fetch parameters information
+  volumeLookback <- params$volumeLookback
+  liquidityThresh <- params$liquidityThresh
+  windowSize <- params$windowSize
+  liquidityLookback <- params$liquidityLookback
   
   for (i in params$series) {
     if (!is.null(newRowList[[i]])) {
       store$ohlcv[[i]] <- rbind(store$ohlcv[[i]], newRowList[[i]])
-      
+      series <- store$ohlcv[[i]]
       #Ensures that there are enough periods for the lookback
       if(params$lookback < 0 || params$volatilityLookback < 0){
         print("ERROR!!!!!!!!!!!!!!!!!")
-        print(params$lookback)
-        print(params$volatilityLookback)
       }
       if(store$iter > max(params$lookback, params$volatilityLookback)){
         
         #Calculate new volatility, liquidity and spread. 
-        newVols <- calculateVolatility(store$ohlcv[[i]], store$iter, params$volatilityLookback)
-        newLiq <- isLiquidityHigh(store$ohlcv[[i]]$Volume, store$iter, params$lookback)
-        newSpread <- calculateSpreadUsingLiquidity(store$ohlcv[[i]], store$iter, newLiq)
+        newLiq <- highLiquidityPeriods(series, volumeLookback, liquidityThresh)
+        newVols <- calculateVolatility(series, store$iter, params$volatilityLookback)
+        newSpread <- calculateSpreadUsingLiquidity(series, store$iter, newLiq)
         
         #Ensure that the period volatilities are not null, if they are just return a list
         if (is.null(store$periodVolatilities[[i]])) {
@@ -233,35 +289,4 @@ updateStore <- function(store, newRowList, params) {
   }
   
   return(store)
-}
-
-
-calculateVolatility <- function(series, storeIter, volatilityLookback){
-  
-  #Ensure we are not using todays data as this would not be available
-  useableSeries <- head(series, storeIter -1)
-  #Calculates the volatility for all of the data so far
-  volatility <- analysePeriodVol(useableSeries, volatilityLookback)
-  # Returns a list with the latest volume period and the volume over the entire period so far.
-  return(list(currPeriod = volatility$periodVol,
-              seriesVol = volatility$seriesVol))
-  
-}
-
-#Calculate the spread based on the liquidity, if liquidity is high, lower the spread, otherwise incerase the spread
-calculateSpreadUsingLiquidity <- function(series, storeIter, liquidity) {
-  useableSeries <- head(series, storeIter - 1)
-  spread <- NA
-  
-  if (nrow(useableSeries) > 0) {
-    todaysData <- tail(useableSeries, 1)[1,]
-    baseSpread <- todaysData$High - todaysData$Low 
-    spread <- if (liquidity) {
-      baseSpread * 0.75
-    } else {
-      baseSpread * 1.25
-    }
-  }
-  
-  return(spread)
 }

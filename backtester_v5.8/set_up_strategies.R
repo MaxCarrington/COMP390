@@ -24,6 +24,10 @@ suitableStratslist <- function(inSampleDataList){
   liquidityThresh <- 0.95
   periodThresh <- 0.95
   momentumLenThresh <- 0.90
+  priceLookback <- 15
+  volumeMultiplier <- 1.25 
+  rangeMultiplier <- 0.75
+  
   #-----------------------------------------------------------------------------
   
   # Initialise an empty list to hold the analysis and strategy for each series
@@ -34,7 +38,7 @@ suitableStratslist <- function(inSampleDataList){
     
     # Analyse the series for volatility, liquidity, momentum statistics, mean reversion statistics
     volatilityStats <- analyseVolatility(series, volatilityLookback)
-    liquidityStats <- analyseLiquidity(series, volatilityLookback, monthly, liquidityWindowSize, volumeLookback, liquidityThresh, periodThresh)
+    liquidityStats <- analyseLiquidity(series, volumeLookback, liquidityThresh, windowSize, priceLookback, volumeMultiplier, rangeMultiplier)
     momentumStats <- analyseMomentum(series, momentumWSize, pValueThreshMom, momentumLenThresh)
     mrStats <- analyseMR(series, i, pValueThreshMR)
     numOnes <- sum(liquidityStats$liquidityIndicators$highLiquidity == 1, na.rm = TRUE)
@@ -217,7 +221,14 @@ setUpTradingParams <- function(tradingStrategy, strategies){
                    liquidityThresh =mmkingInfo$marketMakingliquidityThresh, 
                    windowSize = mmkingInfo$marketMakingWindowSize, 
                    highLiquidityPrdsThresh = 10, 
-                   volatilityLookback = 10
+                   volatilityLookback = 10,
+                   volumeLookback = 10,
+                   tradeHistory = list(wins = numeric(), losses = numeric()),
+                   initialConfidence = 0.5,
+                   liquidityLookback = 15,
+                   priceLookback = 10,
+                   volumeMutliplier = 1.25, 
+                   rangeMultiplier = 0.75
                    ))
     }
     else{
