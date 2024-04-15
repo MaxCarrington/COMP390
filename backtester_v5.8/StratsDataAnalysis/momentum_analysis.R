@@ -10,7 +10,6 @@ source('./Indicators/ADF_test.R')
 
 #Calculates the log returns of the series 
 toLogReturns <- function(series) {
-  
   logReturns <- diff(log(series))
   returnDates <- index(series)
   logReturns <- xts(logReturns, order.by = returnDates)
@@ -39,11 +38,12 @@ calculateRollingCorrelationsWithDates <- function(series, windowSize, significan
   
   for (i in 1:(length(series$Close) - windowSize * 2 + 1)) {
     #Set up indexes for past and future windows
-    pastStart <- i
+    pastStart <- abs(i)
     pastEnd <- i + windowSize - 1
     futureStart <- pastEnd + 1
     futureEnd <- futureStart + windowSize - 1
-    
+    if(futureEnd > length(series$Close))
+      futureEnd <- length(series$Close)
     #Get past and future return data
     pastReturns <- na.omit(series$Close[pastStart:pastEnd])
     futureReturns <- na.omit(series$Close[futureStart:futureEnd])
@@ -53,7 +53,6 @@ calculateRollingCorrelationsWithDates <- function(series, windowSize, significan
       
       #Calculate the correlation between past/future returns
       correlation <- cor.test(pastReturns, futureReturns)
-      
       # Only add to results if p-value indicates the correlation is statistically significant
       if (correlation$p.value < significanceLevel) {
         correlations <- c(correlations, correlation$estimate)
@@ -62,7 +61,6 @@ calculateRollingCorrelationsWithDates <- function(series, windowSize, significan
       }
     }
   }
-  
   return(list(correlation=correlations,
               startDatePast=startDatePast,
               startDateFuture=startDateFuture))
@@ -74,7 +72,6 @@ calcOptimalWindowSize <- function(series, windowSize=30, startWindowSize = 10, e
   optimalWindowSize <- NA
   correlationResult <- list()
   for (windowSize in seq(startWindowSize, endWindowSize, by = stepSize)) {
-    
     # Calculate rolling correlations with the current window size
     corrRes <- calculateRollingCorrelationsWithDates(series, windowSize, significanceLevel)
     

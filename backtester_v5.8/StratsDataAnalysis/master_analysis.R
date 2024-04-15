@@ -13,7 +13,7 @@ source('./Indicators/variance_ratio_test.R')
 source('./Indicators/hurst_exponent.R')
 
 #Returns volatility information of a given time series
-analyseVolatility <- function(series, lookback){
+e <- function(series, lookback){
   return(analysePeriodVol(series, lookback))
 }
 #Returns mean reversion information of a given time series
@@ -21,12 +21,15 @@ analyseMR <- function(series, index, threshold){
   getSeriesMeanRevStats(series, index, threshold)
 }
 #Returns momentum information of a given time series
+#Checks if a time series' log returns are stationary, if so, it  determines the 
+#optimal window size and then sets the strategy to momentum if past and future 
+#returns are positively correlated
 analyseMomentum <- function(series, windowSize, pValueThresh, lengthThresh) {
   logReturns <- toLogReturns(series$Close)
   isStationary <- checkStationarity(logReturns)
-  
   if (!isStationary) {
-    return(NULL)
+    return(list(stratType = "None",
+                correlations = NA))
   }
   # Calculate rolling correlations with dates
   pastFutureReturns <- calcOptimalWindowSize(logReturns)
@@ -42,6 +45,6 @@ analyseMomentum <- function(series, windowSize, pValueThresh, lengthThresh) {
   }
 }
 #Returns liquidity information of a given time series
-analyseLiquidity <- function(series, volumeLookback, liquidityThresh, windowSize, priceLookback, volumeMultiplier, rangeMultiplier){
-  return(combinedLiquidityAnalysis(series, volumeLookback, liquidityThresh, windowSize, priceLookback, volumeMultiplier, rangeMultiplier))
+analyseLiquidity <- function(series, volumeLookback, liquidityThresh, windowSize){
+  return(combinedLiquidityAnalysis(series, volumeLookback, liquidityThresh, windowSize))
 }

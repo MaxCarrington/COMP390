@@ -7,11 +7,12 @@
 #-------------------------------------------------------------------------------
 source('./RiskManagement/position_size_calc.R')
 source('./RiskManagement/trade_record_management.R')
+source('./RiskManagement/turn_on_off_strategies.R')
 getOrders <- function(store, newRowList, currentPos, info, params) {
   limitOrders <- TRUE
   positionSize <- 1
   allzero  <- rep(0,length(newRowList)) # used for initializing vectors
-  
+  tradingDaysInMonth <- 21
   #Initialise the store if it is not already initialised
   if (is.null(store))
     store <- initStore(newRowList, params$series)
@@ -21,15 +22,32 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   
   #marketOrders <- -currentPos; 
   pos <- allzero
-  
+  if(store$iter == 558){
+    print("Wins:")
+    print(length(store$tradeHistory$wins))
+    print("Losses")
+    print(length(store$tradeHistory$losses))
+    print("Number of trades: ")
+    print(store$tradeCount)
+    print(info)
+  }
   for (i in 1:length(params$series)) {
-    
     #Initialise values from the store, parameters and price information
+    lookback <- params$lookback[i]
+    rsiLookback <- params$rsiLookback
     seriesIndex <- params$series[i]
     series <- head(store$ohlcv[[seriesIndex]], -1)
-    holdingPeriod <- params$holdingPeriod[[i]]
+    holdingPeriod <- params$holdingPeriod
     ydaysClose <- coredata(series$Close[length(series$Close)])
     todaysOpen <- coredata(newRowList[[seriesIndex]]$Open)
+    #Only check if the strategy should be turned off, every 2 trading months don't want to check too often too much.
+    strategyOn <- store$strategyOn[i]
+    
+    if(store$iter %% (tradingDaysInMonth * 2) == 0){
+      strategyOn <- checkMomentum(series, params$momentumWSize, params$pValueThreshMom, params$momentumLenThresh)
+      store$strategyOn[i] <- strategyOn
+      print(strategyOn)
+    }
     
     #Check if there are any trade records
     if(length(store$tradeRecords[[seriesIndex]]) > 0){
@@ -49,28 +67,28 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       adjust <- adjustPositions(store, seriesIndex, holdingPeriod, positionSize, todaysOpen)
       store <- adjust$updatedStore
       adjustedPositions <- adjust$pos
-      }
+    }
     #If enough periods have passed 
-    if(length(params$lookback[[i]]) < 0)
+    if(length(params$lookback) < 0)
       print("The lookback parameter has not been initialised correctly. It has a length of: 0")
-    if(length(params$rsiLookback[[i]]) < 0)
+    if(length(params$rsiLookback) < 0)
       print("The RSI lookback parameter has not been initialised correctly. It has a length of: 0")
-    
-    if (store$iter > max(params$lookback[[i]], params$rsiLookback[[i]])){
+    if ((store$iter > max(lookback, rsiLookback))){ # && strategyOn)){
       #Set up indicators
-      rsi <- calculateRSI(series$Close, params$rsiLookback)
+      rsi <- calculateRSI(series$Close, rsiLookback)
       movingAverage <- switch(params$maType,
                               SMA = calculateSMA(series$Close, params$smaLookback),
                               EMA = calculateEMA(series$Close, params$emaLookback),
                               WMA = calculateWMA(series$Close, params$wmaLookback))
       
       #Determine the trend of the series
-      upTrend <- isTrendingUp(movingAverage, params$lookback, params$maThreshold)
-      downTrend <- isTrendingDown(movingAverage, params$lookback, params$maThreshold)
+      upTrend <- isTrendingUp(movingAverage, lookback, params$maThreshold)
+      downTrend <- isTrendingDown(movingAverage, lookback, params$maThreshold)
       
       #Determine if the series is overbought or oversold
       oversold <- isRSIOversold(rsi[length(rsi)], params$oversoldThresh)
       overbought <- isRSIOverbought(rsi[length(rsi)], params$overboughtThresh)
+      
       #Check if todays open is higher / lower than the previous days close
       openCloseDiff <- todaysOpen - ydaysClose
       
@@ -84,12 +102,11 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
         entryPrice <- newRowList[[seriesIndex]]$Open
         store <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "sell", limitOrders) 
         adjustedPositions <- adjustedPositions + -positionSize #Sell signal
-      }
+        }
     }
     pos[seriesIndex] <- adjustedPositions
   }
   #Update new market orders.
-  
   marketOrders <- pos
   return(list(store=store,marketOrders=marketOrders,
               limitOrders1=allzero,
@@ -133,14 +150,21 @@ calculateRSI <- function(series, lookback){
   return(rsi)
 }
 calculateSMA <- function(series, lookback) { # n is the period
+  if(nrow(series) < lookback)
+    lookback <- nrow(series)
   sma <- SMA(series, lookback)
   return(sma)
 }
 calculateEMA <- function(series, lookback) { # n is the period
+  if(nrow(series) < lookback)
+    lookback <- nrow(series)
   ema <- EMA(series, lookback)
   return(ema)
 }
 calculateWMA <- function(series, lookback){
+  if(nrow(series) < lookback)
+    lookback <- nrow(series)
+  
   wma <- WMA(series, lookback)
   return(wma)
 }
@@ -167,7 +191,6 @@ isTrendingUp <- function(movingAverage, lookback, threshold){
       trendingScore <- trendingScore + 1
     }
   }
-  
   if(trendingScore >= lookback * threshold)
     isTrendingUpwards <- TRUE
   
@@ -211,6 +234,7 @@ initStore <- function(newRowList, series) {
   ohlcvStore <- list()
   tradeRecords <- vector("list", length = 10)
   tradeHistory <- list(wins = numeric(0), losses = numeric(0))
+  strategyOn <- rep(TRUE, length(series))
   for (s in series) {
     ohlcvStore[[s]] <- xts(matrix(numeric(0), ncol = 5, dimnames = list(NULL, c("Open", "High", "Low", "Close", "Volume"))),
                            order.by = as.Date(character()))
@@ -218,8 +242,7 @@ initStore <- function(newRowList, series) {
   }
   
   count <- rep(0, 10)
-  
-  return(list(iter = 0, ohlcv = ohlcvStore, count = count, tradeRecords = tradeRecords, tradeHistory = tradeHistory, limitOrderIDs = 0))
+  return(list(iter = 0, ohlcv = ohlcvStore, count = count, tradeRecords = tradeRecords, tradeHistory = tradeHistory, strategyOn = strategyOn))
 }
 
 #Updates the values in the store

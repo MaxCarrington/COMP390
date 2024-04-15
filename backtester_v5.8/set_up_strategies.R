@@ -21,12 +21,13 @@ suitableStratslist <- function(inSampleDataList){
   volatilityLookback <- 20
   monthly <- FALSE
   volumeLookback <- 20
-  liquidityThresh <- 0.95
+  liquidityThresh <- 0.6
   periodThresh <- 0.95
   momentumLenThresh <- 0.90
   priceLookback <- 15
   volumeMultiplier <- 1.25 
   rangeMultiplier <- 0.75
+  mrScoreThresh <- 40
   
   #-----------------------------------------------------------------------------
   
@@ -38,10 +39,9 @@ suitableStratslist <- function(inSampleDataList){
     
     # Analyse the series for volatility, liquidity, momentum statistics, mean reversion statistics
     volatilityStats <- analyseVolatility(series, volatilityLookback)
-    liquidityStats <- analyseLiquidity(series, volumeLookback, liquidityThresh, windowSize, priceLookback, volumeMultiplier, rangeMultiplier)
+    liquidityStats <- analyseLiquidity(series, volumeLookback, liquidityThresh, windowSize)
     momentumStats <- analyseMomentum(series, momentumWSize, pValueThreshMom, momentumLenThresh)
     mrStats <- analyseMR(series, i, pValueThreshMR)
-    numOnes <- sum(liquidityStats$liquidityIndicators$highLiquidity == 1, na.rm = TRUE)
     
     # Update the mean reversion score if the strategy 
     if(momentumStats$stratType == strategies$meanReversion){
@@ -50,11 +50,12 @@ suitableStratslist <- function(inSampleDataList){
     
     # Determine the strategy based on the analysis above
     strategy <- "None" # Default strategy
-    if(momentumStats$stratType == strategies$momentum) {
+    if(momentumStats$stratType == strategies$momentum && !is.na(momentumStats$correlations$lookback)) {
       strategy <- strategies$momentum
-    }else if(mrStats$meanRevScore >= 40){
+    }else if(mrStats$meanRevScore >= mrScoreThresh){
       strategy <- strategies$meanReversion
     } else if(volatilityStats$seriesVol == "Non-Volatile") {
+      #MAYBE ADD back in:
       #Count the number of periods of high liquidity
       numOnes <- sum(liquidityStats$liquidityIndicators$highLiquidity == 1, na.rm = TRUE)
       if(numOnes > (length(liquidityStats$liquidityIndicators$highLiquidity)*0.18))
@@ -66,7 +67,7 @@ suitableStratslist <- function(inSampleDataList){
     # Append the analysis and determined strategy to the list
     seriesAnalysisInfo[[length(seriesAnalysisInfo) + 1]] <- list(
       volatility = volatilityStats,
-      volumeStats = liquidityStats, #Change this to be different for all
+      volumeStats = liquidityStats,
       momentum = momentumStats,
       meanReversion = mrStats,
       index = i,
@@ -106,14 +107,16 @@ getMeanRevInfo <- function(seriesAnalysisInfo){
 getMomentumInfo <- function(seriesAnalysisInfo){
   
   seriesIndexes <- sapply(seriesAnalysisInfo, function(x){
-    if(x$strategy == "Momentum")
+    if(x$strategy == "Momentum" && (!is.na(x$momentum$correlations$lookback))){
       x$index
+      }
     else
       NA
   })
   momentumLookbacks <- sapply(seriesAnalysisInfo, function(x){
-    if(x$strategy == "Momentum"){
+    if(x$strategy == "Momentum" && !is.na(x$momentum$correlations$lookback)){
       x$momentum$correlations$lookback
+      #print(x$momentum$correlations$lookback)
     }
     else
       NA
@@ -187,7 +190,8 @@ setUpTradingParams <- function(tradingStrategy, strategies){
       return(list(stdDev=2, 
                   series=mrInfo$seriesIndexes, 
                   halfLives=mrInfo$halfLives, 
-                  posSizes=rep(1,10)))
+                  pValueThreshMR = pValueThreshMR,
+                  mrScoreThresh = mrScoreThresh))
     }
     else{
       cat("Mean reverison strategy can not run. No series are deemed suitable.", "\n")
@@ -206,7 +210,10 @@ setUpTradingParams <- function(tradingStrategy, strategies){
                    maThreshold = 0.7, 
                    overboughtThresh = 60, 
                    oversoldThresh = 40, 
-                   maType = "SMA"
+                   maType = "SMA",
+                   momentumWSize = momentumWSize, 
+                   pValueThreshMom = pValueThreshMom, 
+                   momentumLenThresh = momentumLenThresh
                    ))
     }
     else{
@@ -223,7 +230,6 @@ setUpTradingParams <- function(tradingStrategy, strategies){
                    highLiquidityPrdsThresh = 10, 
                    volatilityLookback = 10,
                    volumeLookback = 10,
-                   tradeHistory = list(wins = numeric(), losses = numeric()),
                    initialConfidence = 0.5,
                    liquidityLookback = 15,
                    priceLookback = 10,

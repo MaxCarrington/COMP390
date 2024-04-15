@@ -58,42 +58,44 @@ adjustPositions <- function(store, seriesIndex, holdingPeriod, positionSize, tod
     takeProfits <- checkTakeProfits(store, todaysOpen, seriesIndex)
     if(length(takeProfits) > 0){
       adjustedPositions <- adjustedPositions + sum(takeProfits)
-      print("Take profit hit. Exiting position and taking profit...")
+      #print("Take profit hit. Exiting position and taking profit...")
     }
   }
   stopLosses <- checkStopLossesHit(store, todaysOpen, seriesIndex)
   if(length(stopLosses) > 0){
     adjustedPositions <- adjustedPositions + sum(stopLosses)
-    print("Stop Loss hit. Exiting position...")
+    #print("Stop Loss hit. Exiting position...")
   }
   return(list(updatedStore = store, pos = adjustedPositions))
 }
 #Closes a trade record
+#Closes a trade record and updates trade history
 closeTradeRecord <- function(store, seriesIndex, tradeRecord, exitDate, exitPrice, positionSize){
   slippagePercent = 0.2
   tradeRecords <- store$tradeRecords[[seriesIndex]]
   latestDate <- index(last(store$ohlcv[[seriesIndex]]))
   
   for(i in 1:length(tradeRecords)){
-    if(!tradeRecord$cancelled){
-      if(tradeRecords[[i]]$entryDate == tradeRecord$entryDate){
-        tradeRecord$closed <- TRUE
-        tradeRecord$exitPrice <- exitPrice
-        tradeRecord$exitDate <- latestDate
-        tradeRecords[[i]] <- tradeRecord
+    if(tradeRecords[[i]]$entryDate == tradeRecord$entryDate && !tradeRecords[[i]]$closed){
+      tradeRecords[[i]]$closed <- TRUE
+      tradeRecords[[i]]$exitPrice <- exitPrice
+      tradeRecords[[i]]$exitDate <- latestDate
+      # Calculate profit or loss
+      profit <- ifelse(tradeRecord$tradeType == "buy", 
+                       ((exitPrice * (1 - slippagePercent) - tradeRecord$entryPrice) * positionSize), # Long
+                       ((tradeRecord$entryPrice - exitPrice * (1 + slippagePercent)) * positionSize)) # Short
+      # Update trade history
+      if(profit > 0) {
+        store$tradeHistory$wins <- c(store$tradeHistory$wins, profit)
+      } else {
+        store$tradeHistory$losses <- c(store$tradeHistory$losses, profit)
       }
     }
   }
   store$tradeRecords[[seriesIndex]] <- tradeRecords
-  if(!tradeRecord$cancelled){
-    profit <- ifelse(tradeRecord$tradeType == "buy", 
-                     ((exitPrice * (1 - slippagePercent) - tradeRecord$entryPrice) * positionSize), #Long
-                     ((exitPrice * (1 + slippagePercent) - tradeRecord$exitPrice) * positionSize))#Short
-    store <- updateTradeHistory(store, profit)
-  }
-  
   return(store)
 }
+
 # Update the entry prices as we only find out a market orders price the following day, 
 # also determine stop loss and take profit
 updateEntryPrices <- function(store, newRowList, series, seriesIndex) {

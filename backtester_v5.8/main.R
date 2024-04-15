@@ -24,21 +24,24 @@ getParams <- function(tradingStrategy){
     params <- list(stdDev=2, 
                    series = c(6,7,8), 
                    halfLives = c(48, 42, 50),
-                   tradeHistory = list(wins = numeric(), losses = numeric()), 
-                   limitOrderIter = 0)
+                   pValueThreshMR = 0.95,
+                   mrScoreThresh = 40
+    )
   else if(tradingStrategy == strategies$momentum)
     params <- list(series = c(4), 
-                   lookback = c(24), 
-                   holdingPeriod = c(12),
-                   rsiLookback = c(30), 
-                   emaLookback = c(30), 
-                   smaLookback = c(30), 
-                   wmaLookback = c(30), 
+                   lookback = 12, 
+                   holdingPeriod = 12,
+                   rsiLookback = 30, 
+                   emaLookback = 30, 
+                   smaLookback = 30, 
+                   wmaLookback = 30, 
                    maThreshold = 0.7, 
                    overboughtThresh = 60, 
                    oversoldThresh = 40, 
                    maType = "WMA",
-                   tradeHistory = list(wins = numeric(), losses = numeric())
+                   momentumWSize = 30, 
+                   pValueThreshMom = 0.95, 
+                   momentumLenThresh = 0.90
     )
   else if(tradingStrategy == strategies$marketMaking)
     params <- list(series = c(5),
@@ -48,7 +51,6 @@ getParams <- function(tradingStrategy){
                    highLiquidityPrdsThresh = 10,
                    volatilityLookback = 10,
                    volumeLookback = 10,
-                   tradeHistory = list(wins = numeric(), losses = numeric()),
                    initialConfidence = 0.5,
                    liquidityLookback = 15,
                    priceLookback = 10,
@@ -60,7 +62,7 @@ getParams <- function(tradingStrategy){
 
 params <- list()
 if (length(args) < 1) {
-  tradingStrategy <- strategies$meanReversion
+  tradingStrategy <- strategies$momentum
   params <- getParams(tradingStrategy)
 } else{
  tradingStrategy <- args[1]
@@ -73,23 +75,20 @@ is_valid_example_strategy <- function(tradingStrategy) {
 }
 stopifnot(is_valid_example_strategy(tradingStrategy))
 
-
 # split data in two (e.g. for in/out test)
 numDays <- nrow(dataList[[1]])
 inSampDays <- 560
-#inSampDays <- 560
 
 # in-sample period
 inSampleDataList <- lapply(dataList, function(x) x[1:inSampDays])
 # out-of-sample period
 outSampledataList <- lapply(dataList, function(x) 
-  x[(inSampDays+1):numDays])
+  x[(inSampDays+1):initNumDays])
 
 
 #ADD BACK IN TO TEST ON ALL STRATEGIES
-#strategies <- suitableStratslist(inSampleDataList)
-#params <- setUpTradingParams(tradingStrategy, strategies)
-
+strategies <- suitableStratslist(inSampleDataList)
+params <- setUpTradingParams(tradingStrategy, strategies)
 
 load_strategy(tradingStrategy, params) # function from example_strategies.R
 
