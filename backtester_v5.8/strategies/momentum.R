@@ -19,9 +19,12 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   
   #Update the store 
   store <- updateStore(store, newRowList, params$series)    
-  
-  #marketOrders <- -currentPos; 
+  #marketOrders <- -currentPos;
   pos <- allzero
+  limitOrders1 <- allzero
+  limitPrices1 <- allzero
+  limitOrders2 <- allzero
+  limitPrices2 <- allzero
   if(store$iter == 558){
     print("Wins:")
     print(length(store$tradeHistory$wins))
@@ -40,13 +43,13 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     holdingPeriod <- params$holdingPeriod
     ydaysClose <- coredata(series$Close[length(series$Close)])
     todaysOpen <- coredata(newRowList[[seriesIndex]]$Open)
+    limitPrice <- 0
     #Only check if the strategy should be turned off, every 2 trading months don't want to check too often too much.
     strategyOn <- TRUE
     
     if(store$iter %% lookback == 0){
       strategyOn <- checkMomentum(series, params$momentumWSize, params$pValueThreshMom, params$momentumLenThresh)
       store$strategyOn[i] <- strategyOn
-      print(strategyOn)
     }
     
     #Check if there are any trade records
@@ -66,15 +69,27 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       #Handle closing of orders, stop losses and take profits 
       adjust <- adjustPositions(store, seriesIndex, holdingPeriod, positionSize, todaysOpen)
       store <- adjust$updatedStore
-      adjustedPositions <- adjust$pos
+      if(adjustedPositions != 0){
+        adjustedPositions <- adjust$pos
+      }
     }
     #If enough periods have passed 
     if(length(params$lookback) < 0)
       print("The lookback parameter has not been initialised correctly. It has a length of: 0")
     if(length(params$rsiLookback) < 0)
       print("The RSI lookback parameter has not been initialised correctly. It has a length of: 0")
+    if(store$iter == 60){
+      sellAll <- sellAllOpenPositions(store, seriesIndex, todaysOpen)
+      store <- sellAll$store  
+      adjustedPositions <- sellAll$adjustedPositions
+      if(adjustedPositions)
+        print("Sold all positions")
+    }
     if(!strategyOn){
-      adjustedPositions <- -pos
+      #If the strategy is turned off, we need to sell all of our positions
+      sellAll <- sellAllOpenPositions(store, seriesIndex, todaysOpen)
+      store <- sellAll$store  
+      adjustedPositions <- sellAll$adjustedPositions
     }else if(store$iter > max(lookback, rsiLookback) && strategyOn){
       #Set up indicators
       rsi <- calculateRSI(series$Close, rsiLookback)
@@ -82,7 +97,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
                               SMA = calculateSMA(series$Close, params$smaLookback),
                               EMA = calculateEMA(series$Close, params$emaLookback),
                               WMA = calculateWMA(series$Close, params$wmaLookback))
-
+      
       #Determine the trend of the series
       upTrend <- isTrendingUp(movingAverage, lookback, params$maThreshold)
       downTrend <- isTrendingDown(movingAverage, lookback, params$maThreshold)
@@ -97,24 +112,48 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       #If the market is overbought and we are in an uptrend and todays open is higher than yesterdays days open
       if(overbought && upTrend && openCloseDiff > 0){
         entryPrice <- newRowList[[seriesIndex]]$Open
-        store <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "buy", limitOrders)
-        adjustedPositions <- adjustedPositions + positionSize # Buy signal
+        tradeRecord <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "buy", limitOrders)
+        store <- tradeRecord$store
+        if(limitOrders){
+          limitPrices1[seriesIndex] <- tradeRecord$limitPrice 
+          limitOrders1[seriesIndex] <- positionSize
+        } else{
+          adjustedPositions <- adjustedPositions + positionSize # Buy signal 
         }
+      }
       else if(oversold && downTrend && openCloseDiff < 0){#If the market is oversold and we are in a downtrend and todays open is lower than yeserdays open
         entryPrice <- newRowList[[seriesIndex]]$Open
-        store <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "sell", limitOrders) 
-        adjustedPositions <- adjustedPositions + -positionSize #Sell signal
-        }
+        tradeRecord <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "sell", limitOrders)
+        store <- tradeRecord$store
+        if(limitOrders){
+          limitPrices1[seriesIndex] <- tradeRecord$limitPrice 
+          limitOrders1[seriesIndex] <- positionSize
+        }else
+          adjustedPositions <- adjustedPositions -positionSize #Sell signal
+      }
     }
-    pos[seriesIndex] <- adjustedPositions
-  }
+      pos[seriesIndex] <- adjustedPositions
+    }
   #Update new market orders.
   marketOrders <- pos
+  if(sum(marketOrders) != 0){
+    print("Market orders")
+    print(marketOrders)
+  }
+  if(sum(limitOrders1) != 0){
+    print("Limit orders")
+    print(limitOrders1)
+  }
+  if(sum(limitPrices1) != 0){
+    print("Limit prices")
+    print(limitPrices1)
+  }
+    
   return(list(store=store,marketOrders=marketOrders,
-              limitOrders1=allzero,
-              limitPrices1=allzero,
-              limitOrders2=allzero,
-              limitPrices2=allzero))
+              limitOrders1 = limitOrders1,
+              limitPrices1 = limitPrices1,
+              limitOrders2 = limitOrders2,
+              limitPrices2 = limitPrices2))
 }
 #-------------------------------------------------------------------------------
 #Functions to check if the RSI is oversold or overbought
@@ -237,6 +276,8 @@ initStore <- function(newRowList, series) {
   tradeRecords <- vector("list", length = 10)
   tradeHistory <- list(wins = numeric(0), losses = numeric(0))
   strategyOn <- rep(TRUE, length(series))
+  totalBuys <- 0
+  totalSells <- 0
   for (s in series) {
     ohlcvStore[[s]] <- xts(matrix(numeric(0), ncol = 5, dimnames = list(NULL, c("Open", "High", "Low", "Close", "Volume"))),
                            order.by = as.Date(character()))
@@ -244,7 +285,7 @@ initStore <- function(newRowList, series) {
   }
   
   count <- rep(0, 10)
-  return(list(iter = 0, ohlcv = ohlcvStore, count = count, tradeRecords = tradeRecords, tradeHistory = tradeHistory, strategyOn = strategyOn))
+  return(list(iter = 0, ohlcv = ohlcvStore, count = count, tradeRecords = tradeRecords, tradeHistory = tradeHistory, strategyOn = strategyOn, totalBuys = totalBuys, totalSells = totalSells))
 }
 
 #Updates the values in the store

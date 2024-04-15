@@ -40,7 +40,7 @@ createTradeRecord <- function(store, seriesIndex, positionSize, entryPrice, trad
   }
   
   store$tradeRecords[[seriesIndex]] <- c(store$tradeRecords[[seriesIndex]], list(tradeRecord))
-  return(store)
+  return(list(store = store, limitPrice = limitPrice))
 }
 #Adjusts positions based on stop losses and take profits and closes any positions
 adjustPositions <- function(store, seriesIndex, holdingPeriod, positionSize, todaysOpen){
@@ -87,7 +87,7 @@ closeTradeRecord <- function(store, seriesIndex, tradeRecord, exitDate, exitPric
       # Update trade history
       if(profit > 0) {
         store$tradeHistory$wins <- c(store$tradeHistory$wins, profit)
-      } else {
+      } else{
         store$tradeHistory$losses <- c(store$tradeHistory$losses, profit)
       }
     }
@@ -177,10 +177,10 @@ checkIfLimitPriceHit <- function(store, newRowList, series, seriesIndex){
         todaysLow <- coredata(newRowList[[seriesIndex]]$Low)
         
         if((tradeDirection == "buy") && (todaysLow < entryPrice)){
-          print(paste("A buy limit order has been executed at price:", entryPrice, "on the date:", latestDate))
+          print(paste("A buy limit order has been executed at price:", entryPrice, "on the date:", latestDate, "because it is greater than todays low:", todaysLow, ". Executed on the date:", latestDate))
           tradeRecord$entryDate <- latestDate 
         }else if ((tradeDirection == "sell") && (todaysHigh > entryPrice)){
-          print(paste("A sell limit order has been executed at price:", entryPrice, "on the date:", latestDate))
+          print(paste("A sell limit order has been executed at price:", entryPrice, "because it is less than todays high:", todaysHigh, ". Executed on the date:", latestDate))
           tradeRecord$entryDate <- latestDate
         } else{
           print("Limit order is being removed as the price does not reflect that which was set for the limit order")
@@ -196,4 +196,29 @@ checkIfLimitPriceHit <- function(store, newRowList, series, seriesIndex){
   }
   store$tradeRecords[[seriesIndex]] <- tradeRecords
   return(store)
+}
+sellAllOpenPositions <- function(store, seriesIndex, exitPrice){
+  adjustedPositions <- 0
+  tradeRecords <- store$tradeRecords[[seriesIndex]]
+  if(length(tradeRecords) > 0){
+    adjustedPositions <- 0
+    exitDate <- index(last(store$ohlcv[[seriesIndex]]))
+    for(i in 1:length(tradeRecords)){
+      tradeRecord <- tradeRecords[[i]]
+      tradeType <- tradeRecord$tradeType
+      type <- tradeRecord$tradeType
+      closed <- tradeRecord$closed
+      positionSize <- tradeRecord$positionSize
+      if(!closed){
+        if(type == "buy"){
+          adjustedPositions <- adjustedPositions + positionSize
+          store <- closeTradeRecord(store, seriesIndex, tradeRecord, exitDate, exitPrice, positionSize)
+        } else{
+          adjustedPositions <- adjustedPositions - positionSize 
+          store <- closeTradeRecord(store, seriesIndex, tradeRecord, exitDate, exitPrice, positionSize)
+        }
+      }
+    }
+  }
+  return(list(adjustedPositions = adjustedPositions, store = store))
 }
