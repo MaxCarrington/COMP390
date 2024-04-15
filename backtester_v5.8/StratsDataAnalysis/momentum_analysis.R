@@ -31,40 +31,45 @@ checkStationarity <- function(series){
 #and the dates of each window
 
 calculateRollingCorrelationsWithDates <- function(series, windowSize, significanceLevel = 0.05) {
+  # Initial checks and adjustments
+  totalLength <- length(series$Close)
+  windowSize <- min(windowSize, totalLength / 2)  # Ensure windowSize is not more than half of total length
   
-  correlations <- c()
-  startDatePast <- c()
-  startDateFuture <- c()
+  correlations <- numeric()
+  startDatePast <- numeric()
+  startDateFuture <- numeric()
   
-  for (i in 1:(length(series$Close) - windowSize * 2 + 1)) {
-    #Set up indexes for past and future windows
-    pastStart <- abs(i)
+  # Loop through the time series with the adjusted window size
+  for (i in 1:(totalLength - 2 * windowSize + 1)) {
+    # Set up indexes for past and future windows
+    pastStart <- i
     pastEnd <- i + windowSize - 1
     futureStart <- pastEnd + 1
     futureEnd <- futureStart + windowSize - 1
-    if(futureEnd > length(series$Close))
-      futureEnd <- length(series$Close)
-    #Get past and future return data
-    pastReturns <- na.omit(series$Close[pastStart:pastEnd])
-    futureReturns <- na.omit(series$Close[futureStart:futureEnd])
     
-    # Ensure equal lengths before calculating correlation
+    # Get past and future return data
+    pastReturns <- series$Close[pastStart:pastEnd]
+    futureReturns <- series$Close[futureStart:futureEnd]
+    
+    # Ensure both past and future data sets are non-NA and non-empty
     if (length(pastReturns) == length(futureReturns) && length(pastReturns) > 0) {
+      # Calculate the correlation between past and future returns
+      testResults <- cor.test(pastReturns, futureReturns, method = "pearson")
       
-      #Calculate the correlation between past/future returns
-      correlation <- cor.test(pastReturns, futureReturns)
       # Only add to results if p-value indicates the correlation is statistically significant
-      if (correlation$p.value < significanceLevel) {
-        correlations <- c(correlations, correlation$estimate)
+      if (testResults$p.value < significanceLevel) {
+        correlations <- c(correlations, testResults$estimate)
         startDatePast <- c(startDatePast, index(series)[pastStart])
         startDateFuture <- c(startDateFuture, index(series)[futureStart])
       }
     }
   }
-  return(list(correlation=correlations,
-              startDatePast=startDatePast,
-              startDateFuture=startDateFuture))
+  
+  return(list(correlation = correlations,
+              startDatePast = startDatePast,
+              startDateFuture = startDateFuture))
 }
+
 
 calcOptimalWindowSize <- function(series, windowSize=30, startWindowSize = 10, endWindowSize = 40, stepSize = 2, significanceLevel = 0.05) {
   

@@ -41,9 +41,9 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     ydaysClose <- coredata(series$Close[length(series$Close)])
     todaysOpen <- coredata(newRowList[[seriesIndex]]$Open)
     #Only check if the strategy should be turned off, every 2 trading months don't want to check too often too much.
-    strategyOn <- store$strategyOn[i]
+    strategyOn <- TRUE
     
-    if(store$iter %% (tradingDaysInMonth * 2) == 0){
+    if(store$iter %% lookback == 0){
       strategyOn <- checkMomentum(series, params$momentumWSize, params$pValueThreshMom, params$momentumLenThresh)
       store$strategyOn[i] <- strategyOn
       print(strategyOn)
@@ -73,14 +73,16 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       print("The lookback parameter has not been initialised correctly. It has a length of: 0")
     if(length(params$rsiLookback) < 0)
       print("The RSI lookback parameter has not been initialised correctly. It has a length of: 0")
-    if ((store$iter > max(lookback, rsiLookback))){ # && strategyOn)){
+    if(!strategyOn){
+      adjustedPositions <- -pos
+    }else if(store$iter > max(lookback, rsiLookback) && strategyOn){
       #Set up indicators
       rsi <- calculateRSI(series$Close, rsiLookback)
       movingAverage <- switch(params$maType,
                               SMA = calculateSMA(series$Close, params$smaLookback),
                               EMA = calculateEMA(series$Close, params$emaLookback),
                               WMA = calculateWMA(series$Close, params$wmaLookback))
-      
+
       #Determine the trend of the series
       upTrend <- isTrendingUp(movingAverage, lookback, params$maThreshold)
       downTrend <- isTrendingDown(movingAverage, lookback, params$maThreshold)
@@ -97,7 +99,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
         entryPrice <- newRowList[[seriesIndex]]$Open
         store <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "buy", limitOrders)
         adjustedPositions <- adjustedPositions + positionSize # Buy signal
-      }
+        }
       else if(oversold && downTrend && openCloseDiff < 0){#If the market is oversold and we are in a downtrend and todays open is lower than yeserdays open
         entryPrice <- newRowList[[seriesIndex]]$Open
         store <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "sell", limitOrders) 

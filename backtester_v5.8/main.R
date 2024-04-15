@@ -83,12 +83,12 @@ inSampDays <- 560
 inSampleDataList <- lapply(dataList, function(x) x[1:inSampDays])
 # out-of-sample period
 outSampledataList <- lapply(dataList, function(x) 
-  x[(inSampDays+1):initNumDays])
+  x[(inSampDays+1):numDays])
 
 
 #ADD BACK IN TO TEST ON ALL STRATEGIES
-strategies <- suitableStratslist(inSampleDataList)
-params <- setUpTradingParams(tradingStrategy, strategies)
+#strategies <- suitableStratslist(inSampleDataList)
+#params <- setUpTradingParams(tradingStrategy, strategies)
 
 load_strategy(tradingStrategy, params) # function from example_strategies.R
 
