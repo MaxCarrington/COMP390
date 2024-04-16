@@ -53,12 +53,14 @@ adjustPositions <- function(store, seriesIndex, holdingPeriod, positionSize, tod
     ifelse(close$tradeType == "buy",
            adjustedPositions <-  -close$size, # Close the buy position by selling off
            adjustedPositions <- close$size)
+    print(paste("Close position",adjustedPositions))
   }else{
     takeProfits <- checkTakeProfits(store, todaysOpen, seriesIndex)
     positions <- takeProfits$positionSize
     store <- takeProfits$store
     if(sum(positions) != 0){
       adjustedPositions <- adjustedPositions + sum(positions)
+      print(paste("TP adjusted Positions", adjustedPositions))
     }
   }
   stopLosses <- checkStopLossesHit(store, todaysOpen, seriesIndex)
@@ -66,6 +68,7 @@ adjustPositions <- function(store, seriesIndex, holdingPeriod, positionSize, tod
   store <- stopLosses$store
   if(sum(positions) != 0){
     adjustedPositions <- adjustedPositions + sum(positions)
+    print(paste("SL adjusted Positions", adjustedPositions))
   }
   return(list(updatedStore = store, pos = adjustedPositions))
 }

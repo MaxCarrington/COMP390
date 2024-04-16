@@ -10,7 +10,10 @@ source("StratsDataAnalysis/volume_analysis.R")
 
 
 getOrders <- function(store, newRowList, currentPos, info, params) {
-  limitOrders <- FALSE
+  #Change to turn on/off limit orders
+  limitOrdersOn <- TRUE
+  #Change to turn on/off sell all stock when the stratgy is off
+  sellAllOn <- TRUE 
   positionSize <- 1
   # Initialise the store if it has not already been initialised
   if (is.null(store))
@@ -22,7 +25,10 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   allzero  <- rep(0,length(newRowList)) # used for initializing vectors
   marketOrders <- -currentPos; pos <- allzero
   
-  limitOrders1 <- allzero; limitPrices1 <- allzero; limitOrders2 <- allzero;limitPrices2 <- allzero
+  limitOrders1 <- allzero
+  limitPrices1 <- allzero
+  limitOrders2 <- allzero
+  limitPrices2 <- allzero
   
   # Iterate through each suitable series
   for (i in 1:length(params$series)) {
@@ -36,13 +42,44 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       seriesIndex <- params$series[i]
       #Ensure we are not using todays data!
       series <- head(store$ohlcv[[seriesIndex]], -1)
-      #print(nrow(series))
-      #print(series)
-
+      
+      #IMPLEMENT
+      #Only check if the strategy should be turned off, every 2 trading months - don't want to check too often too much.
+      #strategyOn <- TRUE
+      
+      #if(store$iter %% lookback == 0){
+        #strategyOn <- checkMomentum(series, params$momentumWSize, params$pValueThreshMom, params$momentumLenThresh)
+        #store$strategyOn[i] <- strategyOn
+      #}
       #Fetch the current period volatility and the series volatility from the store
       currentPeriodVol <- tail(store$periodVolatilities[[seriesIndex]], 1)
       currentSeriesVol <- tail(store$seriesVolatilities[[seriesIndex]], 1)
-  
+      #Check if there are any trade records
+      if(length(store$tradeRecords[[seriesIndex]]) > 0){
+        if(!limitOrdersOn){
+          store <- updateEntryPrices(store, newRowList, params$series, seriesIndex)
+        }#Update the entry prices in trade records as we can only use open n + 1 for record n
+        
+        else{ #Check if limit price has been hit
+          store <- checkIfLimitPriceHit(store, newRowList, params$series, seriesIndex)
+        }
+        
+      }
+      #Initialise position adjustment factor
+      adjustedPositions <- 0
+      #If there are any trade records 
+      if(length(store$tradeRecords[[seriesIndex]]) > 0){
+        #Increment all open positions by 1
+        store <- incrementHoldingPeriods(store, seriesIndex)
+        #Add todays open price to all closed orders from yesterday
+        store <- addExitPrice(store, seriesIndex, newRowList)
+        #Handle closing of orders, stop losses and take profits 
+        adjust <- adjustPositions(store, seriesIndex, holdingPeriod, positionSize, todaysOpen)
+        store <- adjust$updatedStore
+        if(adjustedPositions != 0){
+          adjustedPositions <- adjust$pos
+        }
+      }
       #If the volatility of the current lookback period is low then determine the liqudity 
       if(length(currentPeriodVol) > 0 && currentPeriodVol == "Low"){
         

@@ -19,13 +19,14 @@ checkTakeProfits <- function(store, todaysOpen, seriesIndex){
     tradeEntryPrice <- tradeRecord$entryPrice
     takeProfit <- tradeRecord$takeProfit
     orderType <- tradeRecord$tradeType
-    if(orderType == "buy" && todaysOpen >= takeProfit){
+    isClosed <- tradeRecord$closed
+    if(orderType == "buy" && todaysOpen >= takeProfit && !isClosed){
       positionSize <- positionSize  - tradeRecord$positionSize
-      print(paste("A Take profit has been hit, at price", todaysOpen, " and selling", positionSize, "units, to cancel long trade"))
+      #print(paste("A Take profit has been hit, at price", todaysOpen, " and selling", positionSize, "units, to cancel long trade"))
       
-    } else if(orderType == "sell" && todaysOpen <= takeProfit){
+    } else if(orderType == "sell" && todaysOpen <= takeProfit && !isClosed){
       positionSize <- positionSize + tradeRecord$positionSize
-      print(paste("A Take profit has been hit, at price", todaysOpen, " and buying", positionSize, "units, to cancel short trade"))
+      #print(paste("A Take profit has been hit, at price", todaysOpen, " and buying", positionSize, "units, to cancel short trade"))
     }
     if(positionSize != 0)
       store <- closeTradeRecord(store, seriesIndex, tradeRecord)

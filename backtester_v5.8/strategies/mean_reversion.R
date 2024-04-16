@@ -46,8 +46,6 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   
   #Iterate through each suitable series.
   for (i in 1:length(params$series)) {
-    print("Series Index")
-    print(params$series[i])
     #Get information about which series, the half Life duration and todays open / yesterdays close
     seriesIndex <- params$series[i]
     series <- head(store$ohlcv[[seriesIndex]], -1)
@@ -64,8 +62,6 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     strategyOn <- TRUE
     
     #Only check if the strategy should be turned off, every 2 half lives - don't want to check too often too much.
-    print(store$iter)
-    print(halfLife)
     if(store$iter %% (halfLife * 2) == 0){
       mrStats <- checkMeanReversion(series, seriesIndex, params$pValueThreshMR)
       store$strategyOn[i] <- mrStats$strategyOn
@@ -90,7 +86,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       #Handle closing of orders, stop losses and take profits 
       adjust <- adjustPositions(store, seriesIndex, halfLife, positionSize, todaysOpen)
       store <- adjust$updatedStore
-      if(adjustedPositions != 0){
+      if(adjust$pos != 0){
         adjustedPositions <- adjust$pos
       }
     }
@@ -130,8 +126,6 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     pos[seriesIndex] <- adjustedPositions
   }
   marketOrders <- pos
-  print(limitOrders1)
-  print(limitPrices1)
   return(list(store=store,marketOrders=marketOrders,
               limitOrders1=limitOrders1,limitPrices1=allzero,
               limitOrders2=limitOrders2,limitPrices2=allzero))

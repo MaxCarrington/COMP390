@@ -171,13 +171,14 @@ checkStopLossesHit <- function(store, todaysOpen, seriesIndex){
     tradeEntryPrice <- tradeRecord$entryPrice
     stopLoss <- tradeRecord$stopLoss
     orderType <- tradeRecord$tradeType
-    if(orderType == "buy" && todaysOpen <= stopLoss){
+    isClosed <- tradeRecord$closed
+    if(orderType == "buy" && todaysOpen <= stopLoss && !isClosed){
       positionSize <- positionSize -tradeRecord$positionSize
-      print(paste("A Stop loss has been hit, at price", todaysOpen, " and selling", positionSize, "units, to cancel long trade"))
+      #print(paste("A Stop loss has been hit, at price", todaysOpen, " and selling", positionSize, "units, to cancel long trade"))
       
-    } else if(orderType == "sell" && todaysOpen >= stopLoss){
+    } else if(orderType == "sell" && todaysOpen >= stopLoss && !isClosed){
       positionSize <- positionSize + tradeRecord$positionSize
-      print(paste("A Stop loss has been hit, at price", todaysOpen, " and buying", positionSize, "units, to cancel long trade"))
+      #print(paste("A Stop loss has been hit, at price", todaysOpen, " and buying", positionSize, "units, to cancel long trade"))
     }
     if(positionSize != 0)
       store <- closeTradeRecord(store, seriesIndex, tradeRecord)

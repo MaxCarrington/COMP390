@@ -75,10 +75,9 @@ is_valid_example_strategy <- function(tradingStrategy) {
 }
 stopifnot(is_valid_example_strategy(tradingStrategy))
 
-# split data in two (e.g. for in/out test)
+# split data in two (e.g. for in/out test)s
 numDays <- nrow(dataList[[1]])
 inSampDays <- 560
-
 # in-sample period
 inSampleDataList <- lapply(dataList, function(x) x[1:inSampDays])
 # out-of-sample period
