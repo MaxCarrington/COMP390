@@ -26,7 +26,7 @@ checkTakeProfits <- function(store, todaysOpen, seriesIndex){
       positionSize <- positionSize + tradeRecord$positionSize
     }
     if(positionSize != 0)
-      store <- closeTradeRecord(store, seriesIndex, tradeRecord, latestDate, positionSize)
+      store <- closeTradeRecord(store, seriesIndex, tradeRecord)
   }
   return(list(positionSize = positionSize, store = store))
 }

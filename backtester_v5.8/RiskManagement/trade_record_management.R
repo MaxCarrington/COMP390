@@ -71,7 +71,7 @@ adjustPositions <- function(store, seriesIndex, holdingPeriod, positionSize, tod
 }
 #Closes a trade record
 #Closes a trade record and updates trade history
-closeTradeRecord <- function(store, seriesIndex, tradeRecord, exitDate, positionSize){
+closeTradeRecord <- function(store, seriesIndex, tradeRecord){
   tradeRecords <- store$tradeRecords[[seriesIndex]]
   latestDate <- index(last(store$ohlcv[[seriesIndex]]))
   
@@ -168,7 +168,7 @@ checkClosePositions <- function(store, seriesIndex, halfLifeHoldingPeriod, posit
         exitDate <- latestDate
         positionSize <- tradeRecord$positionSize
         type <- tradeRecord$tradeType
-        store <- closeTradeRecord(store, seriesIndex, tradeRecord, exitDate, todaysOpen, positionSize)
+        store <- closeTradeRecord(store, seriesIndex, tradeRecord)
         position = TRUE
       }
     }
@@ -235,10 +235,10 @@ sellAllOpenPositions <- function(store, seriesIndex, exitPrice){
       if(!closed){
         if(type == "buy"){
           adjustedPositions <- adjustedPositions + positionSize
-          store <- closeTradeRecord(store, seriesIndex, tradeRecord, exitDate, positionSize)
+          store <- closeTradeRecord(store, seriesIndex, tradeRecord)
         } else{
           adjustedPositions <- adjustedPositions - positionSize 
-          store <- closeTradeRecord(store, seriesIndex, tradeRecord, exitDate, positionSize)
+          store <- closeTradeRecord(store, seriesIndex, tradeRecord)
         }
       }
     }
