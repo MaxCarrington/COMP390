@@ -19,7 +19,10 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   store <- updateStore(store, newRowList, params$series)
   #Initialise all positions to 0
   pos <- allzero
-  
+  limitOrders1 <- allzero
+  limitPrices1 <- allzero
+  limitOrders2 <- allzero
+  limitPrices2 <- allzero
   #Set market orders to try and cancel out current positions 
   #marketOrders <- -currentPos;
   
@@ -33,12 +36,6 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     print(store$tradeCount)
     print(info)
   }
-  if(store$iter == 558){
-    for (x in 1:length(params$series)){
-      seriesIndex <- params$series[x]
-      print(length(store$tradeRecords[[seriesIndex]]))
-    }
-  }
   #-----------------------------------------------------------------------------
   
   #Iterate through each suitable series.
@@ -49,6 +46,15 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     halfLife <- params$halfLives[i]
     ydaysClose <- series$Close[length(series$Close)]
     todaysOpen <- coredata(newRowList[[seriesIndex]]$Open)
+    limitPrice <- 0
+    #Only check if the strategy should be turned off, every 2 trading months don't want to check too often too much.
+    strategyOn <- TRUE
+    
+    #IMPLEMENT
+    #if(store$iter %% lookback == 0){
+      #strategyOn <- checkMomentum(series, params$momentumWSize, params$pValueThreshMom, params$momentumLenThresh)
+      #store$strategyOn[i] <- strategyOn
+    #}
     #Check if there are any trade records
     if(length(store$tradeRecords[[seriesIndex]]) > 0){
       if(!limitOrders)#Update the entry prices in trade records as we can only use open n + 1 for record n
@@ -58,31 +64,19 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     }
     #Initialise position adjustment factor
     adjustedPositions <- 0
+    #If there are any trade records 
     if(length(store$tradeRecords[[seriesIndex]]) > 0){
       #Increment all open positions by 1
       store <- incrementHoldingPeriods(store, seriesIndex)
-      
+      #Add todays open price to all closed orders from yesterday
+      store <- addExitPrice(store, seriesIndex, newRowList)
       #Handle closing of orders, stop losses and take profits 
-      close <- checkClosePositions(store, seriesIndex, halfLife, positionSize, todaysOpen)
-      store <- close$store
-      #print(store$tradeRecords)
-      if(close$position){# If we need to close the position
-        ifelse(close$tradeType == "buy",
-               adjustedPositions <-  -close$size, # Close the buy position by selling off
-               adjustedPositions <- close$size)
-      }else{
-        takeProfits <- checkTakeProfits(store, todaysOpen, seriesIndex)
-        if(length(takeProfits) > 0){
-          adjustedPositions <- adjustedPositions + sum(takeProfits)
-          print("Take Profit hit. Adjusting Position....")
-        }
+      adjust <- adjustPositions(store, seriesIndex, halfLife, positionSize, todaysOpen)
+      store <- adjust$updatedStore
+      if(adjustedPositions != 0){
+        adjustedPositions <- adjust$pos
       }
-      stopLosses <- checkStopLossesHit(store, todaysOpen, seriesIndex)
-      if(length(stopLosses) > 0)
-        adjustedPositions <- adjustedPositions + sum(stopLosses)
-        print("Stop Loss hit. Adjusting Position....")
     }
-    
     if (store$iter > halfLife) {
       #Ensure we are not using todays data as we would not have access to this
       hlcPrices <- head(store$ohlcv[[seriesIndex]][, c("High", "Low", "Close")], -1)
@@ -90,13 +84,15 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       #Buy if the bands suggest the close is below the bollinger band
       if(ydaysClose < bbands[,"dn"]){
         entryPrice <- newRowList[[seriesIndex]]$Open
-        store <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "buy", halfLife)
+        tradeRecord <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "buy", halfLife)
+        store <- tradeRecord$store
         store$tradeCount <- store$tradeCount + 1
         pos[params$series[i]] <- positionSize
       }
       else if (ydaysClose < bbands[,"up"]){ #sell if the bands suggest the close is above the bollinger band
         entryPrice <- newRowList[[seriesIndex]]$Open
-        store <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "sell", halfLife)
+        tradeRecord <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "sell", halfLife)
+        store <- tradeRecord$store
         store$tradeCount <- store$tradeCount + 1
         pos[params$series[i]] <- -positionSize
       }

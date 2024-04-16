@@ -3,17 +3,22 @@ strategies <- list(meanReversion = "Mean-Reversion",
                    momentum ="Momentum",
                    marketMaking = "Market-Making")
 
-checkMeanReversion <- function(series, seriesIndex, pValueThreshMR, mrScoreThresh){
-  mrStats <- analyseMR(series, i, pValueThreshMR)
-  return(mrStats$meanRevScore >= mrScoreThresh)
-}
+#Analyses the current series in the store to determine whether we should turn the 
+#strategy on or off based on the current data for a momentum strategy
 checkMomentum <- function(series, momentumWSize, pValueThreshMom, momentumLenThresh){
   momentumStats <- analyseMomentum(series, momentumWSize, pValueThreshMom, momentumLenThresh)
   if(momentumStats$stratType == strategies$momentum)
     return(TRUE)
-  else{
+  else
     return(FALSE)
-  }
 }
-checkMarketMaking <- function(store, params){
+#Analyses the current series in the store to determine whether we should turn the 
+#strategy on or off based on the current data for a mean reversion strategy
+checkMeanReversion <- function(series, seriesIndex, pValueThreshMR, mrScoreThresh = 40){
+  meanRevStats <- analyseMR(series, seriesIndex, pValueThreshMR)
+  if(meanRevStats$meanRevScore >= mrScoreThresh){
+    return(list(meanRevStats = meanRevStats, strategyOn = TRUE))
+  } else{
+    return(list(meanRevStats = meanRevStats, strategyOn = FALSE))
+  }
 }
