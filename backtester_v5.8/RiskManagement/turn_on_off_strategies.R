@@ -16,9 +16,10 @@ checkMomentum <- function(series, momentumWSize, pValueThreshMom, momentumLenThr
 #strategy on or off based on the current data for a mean reversion strategy
 checkMeanReversion <- function(series, seriesIndex, pValueThreshMR, mrScoreThresh = 40){
   meanRevStats <- analyseMR(series, seriesIndex, pValueThreshMR)
+  halfLife <- round(meanRevStats$attributes$HalfLife$HalfLife_WithIntercept)
   if(meanRevStats$meanRevScore >= mrScoreThresh){
-    return(list(meanRevStats = meanRevStats, strategyOn = TRUE))
+    return(list(halfLife = halfLife, strategyOn = TRUE))
   } else{
-    return(list(meanRevStats = meanRevStats, strategyOn = FALSE))
+    return(list(halfLife = halfLife, strategyOn = FALSE))
   }
 }

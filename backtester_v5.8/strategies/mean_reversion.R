@@ -6,9 +6,15 @@
 #-------------------------------------------------------------------------------
 source('./RiskManagement/position_size_calc.R')
 source('./RiskManagement/trade_record_management.R')
+source('./RiskManagement/turn_on_off_strategies.R')
 getOrders <- function(store, newRowList, currentPos, info, params) {
-  limitOrders <- TRUE
+  #Change to turn on/off limit orders
+  limitOrdersOn <- TRUE
+  #Change to turn on/off sell all stock when the stratgy is off
+  sellAllOn <- TRUE 
+  #Default Position size
   positionSize <- 1
+  
   allzero  <- rep(0,length(newRowList)) # used for initializing vectors
   
   #Initialise the store if it is not already initialised
@@ -40,6 +46,8 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   
   #Iterate through each suitable series.
   for (i in 1:length(params$series)) {
+    print("Series Index")
+    print(params$series[i])
     #Get information about which series, the half Life duration and todays open / yesterdays close
     seriesIndex <- params$series[i]
     series <- head(store$ohlcv[[seriesIndex]], -1)
@@ -47,17 +55,26 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     ydaysClose <- series$Close[length(series$Close)]
     todaysOpen <- coredata(newRowList[[seriesIndex]]$Open)
     limitPrice <- 0
+    #Check if half life has been calculated, if not use the params$halfLife
+    if(store$halfLives[i] == 0)
+      halfLife <- params$halfLives[i]
+    else
+      halfLife <- store$halfLives[i]
     #Only check if the strategy should be turned off, every 2 trading months don't want to check too often too much.
     strategyOn <- TRUE
     
-    #IMPLEMENT
-    #if(store$iter %% lookback == 0){
-      #strategyOn <- checkMomentum(series, params$momentumWSize, params$pValueThreshMom, params$momentumLenThresh)
-      #store$strategyOn[i] <- strategyOn
-    #}
+    #Only check if the strategy should be turned off, every 2 half lives - don't want to check too often too much.
+    print(store$iter)
+    print(halfLife)
+    if(store$iter %% (halfLife * 2) == 0){
+      mrStats <- checkMeanReversion(series, seriesIndex, params$pValueThreshMR)
+      store$strategyOn[i] <- mrStats$strategyOn
+      if(store$strategyOn[i])
+        store$halfLives[i] <- round(mrStats$halfLife)
+    }
     #Check if there are any trade records
     if(length(store$tradeRecords[[seriesIndex]]) > 0){
-      if(!limitOrders)#Update the entry prices in trade records as we can only use open n + 1 for record n
+      if(!limitOrdersOn)#Update the entry prices in trade records as we can only use open n + 1 for record n
         store <- updateEntryPrices(store, newRowList, params$series, seriesIndex)
       else #Check if limit price has been hit
         store <- checkIfLimitPriceHit(store, newRowList, params$series, seriesIndex)
@@ -77,7 +94,13 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
         adjustedPositions <- adjust$pos
       }
     }
-    if (store$iter > halfLife) {
+    if(!strategyOn){
+      #If the strategy is turned off, we need to sell all of our positions
+      sellAll <- sellAllOpenPositions(store, seriesIndex, todaysOpen)
+      store <- sellAll$store  
+      adjustedPositions <- sellAll$adjustedPositions
+      print("All positions have been cancelled")
+    } else if (store$iter > halfLife) {
       #Ensure we are not using todays data as we would not have access to this
       hlcPrices <- head(store$ohlcv[[seriesIndex]][, c("High", "Low", "Close")], -1)
       bbands <- calculateBollingerBands(hlcPrices, halfLife, params$stdDev)
@@ -86,22 +109,32 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
         entryPrice <- newRowList[[seriesIndex]]$Open
         tradeRecord <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "buy", halfLife)
         store <- tradeRecord$store
-        store$tradeCount <- store$tradeCount + 1
-        pos[params$series[i]] <- positionSize
+        if(limitOrdersOn){
+          limitPrices1[seriesIndex] <- tradeRecord$limitPrice 
+          limitOrders1[seriesIndex] <- positionSize
+        } else{
+          adjustedPositions <- adjustedPositions + positionSize # Buy signal 
+        }
       }
       else if (ydaysClose < bbands[,"up"]){ #sell if the bands suggest the close is above the bollinger band
         entryPrice <- newRowList[[seriesIndex]]$Open
         tradeRecord <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "sell", halfLife)
         store <- tradeRecord$store
-        store$tradeCount <- store$tradeCount + 1
-        pos[params$series[i]] <- -positionSize
+        if(limitOrdersOn){
+          limitPrices1[seriesIndex] <- tradeRecord$limitPrice 
+          limitOrders1[seriesIndex] <- -positionSize
+        }else
+          adjustedPositions <- adjustedPositions -positionSize #Sell signal
       }
     }
+    pos[seriesIndex] <- adjustedPositions
   }
   marketOrders <- pos
+  print(limitOrders1)
+  print(limitPrices1)
   return(list(store=store,marketOrders=marketOrders,
-              limitOrders1=allzero,limitPrices1=allzero,
-              limitOrders2=allzero,limitPrices2=allzero))
+              limitOrders1=limitOrders1,limitPrices1=allzero,
+              limitOrders2=limitOrders2,limitPrices2=allzero))
 }
 #-------------------------------------------------------------------------------
 # Function to calculate Bollinger bands based on a lookback and standard deviation
@@ -123,14 +156,14 @@ initStore <- function(newRowList, series) {
   ohlcvStore <- list()
   tradeRecords <- vector("list", length = 10) # Ensure tradeRecords is large enough
   tradeHistory <- list(wins = numeric(0), losses = numeric(0))
-  tradeCount <- 0
+  halfLives <- rep(0,10)
   for (s in series) {
     ohlcvStore[[s]] <- xts(matrix(numeric(0), ncol = 5, dimnames = list(NULL, c("Open", "High", "Low", "Close", "Volume"))),
                            order.by = as.Date(character()))
   }
   count <- vector(mode = "numeric", length = length(series))
   
-  return(list(iter = 0, ohlcv = ohlcvStore, count = count, tradeRecords = tradeRecords, tradeHistory = tradeHistory, tradeCount = tradeCount))
+  return(list(iter = 0, ohlcv = ohlcvStore, count = count, tradeRecords = tradeRecords, tradeHistory = tradeHistory, halfLives = halfLives))
 }
 
 #Updates the store

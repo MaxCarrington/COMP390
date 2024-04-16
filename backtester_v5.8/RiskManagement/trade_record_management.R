@@ -200,13 +200,13 @@ checkIfLimitPriceHit <- function(store, newRowList, series, seriesIndex){
         todaysLow <- coredata(newRowList[[seriesIndex]]$Low)
         
         if((tradeDirection == "buy") && (todaysLow < entryPrice)){
-          print(paste("A buy limit order has been executed at price:", entryPrice, "on the date:", latestDate, "because it is greater than todays low:", todaysLow, ". Executed on the date:", latestDate))
+          #print(paste("A buy limit order has been executed at price:", entryPrice, "on the date:", latestDate, "because it is greater than todays low:", todaysLow, ". Executed on the date:", latestDate))
           tradeRecord$entryDate <- latestDate 
         }else if ((tradeDirection == "sell") && (todaysHigh > entryPrice)){
-          print(paste("A sell limit order has been executed at price:", entryPrice, "because it is less than todays high:", todaysHigh, ". Executed on the date:", latestDate))
+          #print(paste("A sell limit order has been executed at price:", entryPrice, "because it is less than todays high:", todaysHigh, ". Executed on the date:", latestDate))
           tradeRecord$entryDate <- latestDate
         } else{
-          print("Limit order is being removed as the price does not reflect that which was set for the limit order")
+          #print("Limit order is being removed as the price does not reflect that which was set for the limit order")
           tradeRecord$entryDate <- latestDate
           tradeRecord$cancelled <- TRUE
           tradeRecord$closed <- TRUE

@@ -93,7 +93,7 @@ outSampledataList <- lapply(dataList, function(x)
 load_strategy(tradingStrategy, params) # function from example_strategies.R
 
 sMult <- 0.20 # slippage multiplier
-results <- backtest(inSampleDataList,getOrders,params,sMult)
+results <- backtest(outSampledataList,getOrders,params,sMult)
 pfolioPnL <- plotResults(dataList,results,plotType='ggplot2')
 
 for (i in 1:length(results$pnlList)) {
