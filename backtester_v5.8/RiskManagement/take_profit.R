@@ -11,20 +11,24 @@ calculateTakeProfit <- function(tradeType, entryPrice){
 #This function checks if take profits have been hit, if they have, add them to 
 # a position to take profit
 checkTakeProfits <- function(store, todaysOpen, seriesIndex){
-  positionSize <- c()
-  tradeRecord <- store$tradeRecords[[seriesIndex]]
-  for(i in 1:length(tradeRecord)){
-    tradeEntryPrice <- tradeRecord[[i]]$entryPrice
-    takeProfit <- tradeRecord[[i]]$takeProfit
-    orderType <- tradeRecord[[i]]$tradeType
+  positionSize <- 0
+  tradeRecords <- store$tradeRecords[[seriesIndex]]
+  latestDate <- index(last(store$ohlcv[[seriesIndex]]))
+  for(i in 1:length(tradeRecords)){
+    tradeRecord <- tradeRecords[[i]]
+    tradeEntryPrice <- tradeRecord$entryPrice
+    takeProfit <- tradeRecord$takeProfit
+    orderType <- tradeRecord$tradeType
     if(orderType == "buy" && todaysOpen >= takeProfit){
-      positionSize <- c(positionSize, -tradeRecord[[i]]$positionSize)
+      positionSize <- positionSize  - tradeRecord$positionSize
       
     } else if(orderType == "sell" && todaysOpen <= takeProfit){
-      positionSize <- c(positionSize, tradeRecord[[i]]$positionSize)
+      positionSize <- positionSize + tradeRecord$positionSize
     }
-    return(positionSize)
+    if(positionSize != 0)
+      store <- closeTradeRecord(store, seriesIndex, tradeRecord, latestDate, positionSize)
   }
+  return(list(positionSize = positionSize, store = store))
 }
 #Potentially implement
 priceChangeSinceHalfLife <- function(){

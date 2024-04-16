@@ -54,10 +54,14 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     
     #Check if there are any trade records
     if(length(store$tradeRecords[[seriesIndex]]) > 0){
-      if(!limitOrders)#Update the entry prices in trade records as we can only use open n + 1 for record n
+      if(!limitOrders){
         store <- updateEntryPrices(store, newRowList, params$series, seriesIndex)
-      else #Check if limit price has been hit
+        }#Update the entry prices in trade records as we can only use open n + 1 for record n
+      
+      else{ #Check if limit price has been hit
         store <- checkIfLimitPriceHit(store, newRowList, params$series, seriesIndex)
+      }
+        
     }
     #Initialise position adjustment factor
     adjustedPositions <- 0
@@ -65,7 +69,8 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     if(length(store$tradeRecords[[seriesIndex]]) > 0){
       #Increment all open positions by 1
       store <- incrementHoldingPeriods(store, seriesIndex)
-      
+      #Add todays open price to all closed orders from yesterday
+      store <- addExitPrice(store, seriesIndex, newRowList)
       #Handle closing of orders, stop losses and take profits 
       adjust <- adjustPositions(store, seriesIndex, holdingPeriod, positionSize, todaysOpen)
       store <- adjust$updatedStore
@@ -83,7 +88,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       store <- sellAll$store  
       adjustedPositions <- sellAll$adjustedPositions
       if(adjustedPositions)
-        print("Sold all positions")
+        print("All positions have been cancelled")
     }
     if(!strategyOn){
       #If the strategy is turned off, we need to sell all of our positions
@@ -136,19 +141,21 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     }
   #Update new market orders.
   marketOrders <- pos
-  if(sum(marketOrders) != 0){
-    print("Market orders")
-    print(marketOrders)
-  }
-  if(sum(limitOrders1) != 0){
-    print("Limit orders")
-    print(limitOrders1)
-  }
-  if(sum(limitPrices1) != 0){
-    print("Limit prices")
-    print(limitPrices1)
-  }
-    
+  #-----------------------------------------------------------------------------
+  #Add in for testing
+  #if(sum(marketOrders) != 0){
+    #print("Market orders")
+    #print(marketOrders)
+  #}
+  #if(sum(limitOrders1) != 0){
+    #print("Limit orders")
+    #print(limitOrders1)
+  #}
+  #if(sum(limitPrices1) != 0){
+    #print("Limit prices")
+    #print(limitPrices1)
+  #}
+  #-----------------------------------------------------------------------------
   return(list(store=store,marketOrders=marketOrders,
               limitOrders1 = limitOrders1,
               limitPrices1 = limitPrices1,

@@ -163,20 +163,24 @@ calculateStopLoss <- function(tradeType, entryPrice){
 #This function checks if stop losses have been hit, if they have, add them to a 
 # position so the trade is cancelled
 checkStopLossesHit <- function(store, todaysOpen, seriesIndex){
-  positionSize <- c()
-  tradeRecord <- store$tradeRecords[[seriesIndex]]
-  for(i in 1:length(tradeRecord)){
-    tradeEntryPrice <- tradeRecord[[i]]$entryPrice
-    stopLoss <- tradeRecord[[i]]$stopLoss
-    orderType <- tradeRecord[[i]]$tradeType
+  positionSize <- 0
+  tradeRecords <- store$tradeRecords[[seriesIndex]]
+  latestDate <- index(last(store$ohlcv[[seriesIndex]]))
+  for(i in 1:length(tradeRecords)){
+    tradeRecord <- tradeRecords[[i]]
+    tradeEntryPrice <- tradeRecord$entryPrice
+    stopLoss <- tradeRecord$stopLoss
+    orderType <- tradeRecord$tradeType
     if(orderType == "buy" && todaysOpen <= stopLoss){
-      positionSize <- c(positionSize, -tradeRecord[[i]]$positionSize)
+      positionSize <- positionSize -tradeRecord$positionSize
       
     } else if(orderType == "sell" && todaysOpen >= stopLoss){
-      positionSize <- c(positionSize, tradeRecord[[i]]$positionSize)
+      positionSize <- positionSize + tradeRecord$positionSize
     }
+    if(positionSize != 0)
+      store <- closeTradeRecord(store, seriesIndex, tradeRecord, latestDate, positionSize)
   }
-  return(positionSize)
+  return(list(positionSize = positionSize, store = store))
 }
 
 
