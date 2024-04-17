@@ -1,15 +1,14 @@
 #-------------------------------------------------------------------------------
-#The momentum strategy here is a very simple one. If a time series is deemed to be upwardly trending, with a trending moving average and an RSI of 
-#over 70 (although this value may change after parameter optimisation), this indicates strong market momentum, buy the asset if the open is higher 
-#than the previous close. Conversely, If the market is downwardly trending, with a downward trending moving average and an RSI under 30 (again, this 
-#value is subject to change), short an asset when the open is lower than the close. The premise of this idea is to capitalise on the momentum created 
-#by price gaps. 
+# The momentum strategy here is a very simple one. If a time series is deemed to be upwardly trending, with a trending moving average an upward RSI
+# that indicates if there is strong market momentum and buys the asset if the open is higher than the previous close. Conversely, If the market is 
+# downwardly trending, with a downward trending moving average and an low RSI , short an asset when the open is lower than the close. 
+# The premise of this idea is to capitalise on the momentum created by price gaps. 
 #-------------------------------------------------------------------------------
 source('./RiskManagement/position_size_calc.R')
 source('./RiskManagement/trade_record_management.R')
 source('./RiskManagement/turn_on_off_strategies.R')
 getOrders <- function(store, newRowList, currentPos, info, params) {
-  print(currentPos)
+  #print(paste("Current Net worth:",(info$netWorth), "on date:", latestDate))
   #Change to turn on/off limit orders
   limitOrdersOn <- TRUE
   #Change to turn on/off sell all stock when the stratgy is off
@@ -29,23 +28,6 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   limitPrices1 <- allzero
   limitOrders2 <- allzero
   limitPrices2 <- allzero
-  if(store$iter == 558){
-    print("Wins:")
-    print(length(store$tradeHistory$wins))
-    print("Losses")
-    print(length(store$tradeHistory$losses))
-    print("Number of trades: ")
-    print(store$tradeCount)
-    print(info)
-    tradeRecords <- store$tradeRecords[[4]]
-    latestDate <- index(last(store$ohlcv[[4]]))
-    
-    for(i in 1:length(tradeRecords)){
-      print(tradeRecords[[i]]$closed)
-      print(tradeRecords[[i]]$exitPrice)
-      print(tradeRecords[[i]]$exitDate)
-    }
-  }
   for (i in 1:length(params$series)) {
     #Initialise values from the store, parameters and price information
     lookback <- params$lookback[i]
@@ -57,11 +39,22 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     todaysOpen <- coredata(newRowList[[seriesIndex]]$Open)
     limitPrice <- 0
     #Only check if the strategy should be turned off, every 2 trading months don't want to check too often too much.
-    strategyOn <- TRUE
-    
-    if(store$iter %% lookback == 0){
+    strategyOn <- store$strategyOn[i]
+    twoLookbacks <- lookback * 2
+    if(store$iter %% lookback == 0 && store$iter > twoLookbacks){
+      nrows <- nrow(series)
+      twoLookbacksStart <- nrows - twoLookbacks
       strategyOn <- checkMomentum(series, params$momentumWSize, params$pValueThreshMom, params$momentumLenThresh)
-      store$strategyOn[i] <- strategyOn
+      volatility <- analyseVolatility(series, lookback)
+      noVolRows <- nrow(volatility$periodVol)
+      isVolatile <- recentPeriodVol(volatility$periodVol[(noVolRows - (lookback - 1)):noVolRows])
+      if(strategyOn && !isVolatile)
+        store$strategyOn[i] <- TRUE
+      else
+        store$strategyOn[i] <- FALSE
+      print("-----------")
+      print(!isVolatile)
+      print(strategyOn)
     }
     
     #Check if there are any trade records
@@ -96,14 +89,13 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       print("The lookback parameter has not been initialised correctly. It has a length of: 0")
     if(length(params$rsiLookback) < 0)
       print("The RSI lookback parameter has not been initialised correctly. It has a length of: 0")
-    if(!strategyOn){
+    if(!strategyOn && sellAllOn){
       #If the strategy is turned off, we need to sell all of our positions
-      if(sellAllOn){
-        
-        sellAll <- sellAllOpenPositions(store, seriesIndex, todaysOpen)
-        store <- sellAll$store  
-        adjustedPositions <- sellAll$adjustedPositions
-      }
+      adjust <- sellAllOpenPositions(store, seriesIndex, todaysOpen)
+      adjustedPositions <- adjustedPositions + adjust$pos
+      store <- adjust$store
+      clearInventory <- TRUE
+      
     }else if(store$iter > max(lookback, rsiLookback) && strategyOn){
       #Set up indicators
       rsi <- calculateRSI(series$Close, rsiLookback)
@@ -126,7 +118,6 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       #If the market is overbought and we are in an uptrend and todays open is higher than yesterdays days open
       if(overbought && upTrend && openCloseDiff > 0){
         entryPrice <- newRowList[[seriesIndex]]$Open
-        print("Bought here")
         tradeRecord <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "buy", limitOrdersOn)
         store <- tradeRecord$store
         if(limitOrdersOn){
@@ -138,7 +129,6 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       }
       else if(oversold && downTrend && openCloseDiff < 0){#If the market is oversold and we are in a downtrend and todays open is lower than yeserdays open
         entryPrice <- newRowList[[seriesIndex]]$Open
-        print("Sold here")
         tradeRecord <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "sell", limitOrdersOn)
         store <- tradeRecord$store
         if(limitOrdersOn){
@@ -151,6 +141,11 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       pos[seriesIndex] <- adjustedPositions
     }
   #Update new market orders.
+  #if(clearInventory)
+    #marketOrders <- ifelse(abs(currentPos) > params$inventoryLimits,
+     #      -currentPos,0)
+  #else
+   # marketOrders <- pos
   marketOrders <- pos
   return(list(store=store,marketOrders=marketOrders,
               limitOrders1 = limitOrders1,

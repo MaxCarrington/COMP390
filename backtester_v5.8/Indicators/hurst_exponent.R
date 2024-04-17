@@ -15,6 +15,9 @@ if (!require(pracma))
 
 calculateHurstExponent <- function(timeSeries) {
   H <- hurstexp(timeSeries, display=FALSE)
-  return(H$Hrs)
+  if(is.na(H$Hrs))
+    return(H$Hal)
+  else
+    return(H$Hrs)
 }
 #-------------------------------------------------------------------------------

@@ -28,7 +28,6 @@ getSeriesMeanRevStats <- function(series, index, threshold){
   RndWalk <- performVarianceRatioTest(series$Close)
   UnitRoot <- performADFTest(series$Close)
   HalfLife <- calculateHalfLife(series$Close) 
-  
   if(HVal < 0.5){
     score <- score + 20
     consistencyScore <- consistencyScore + 1

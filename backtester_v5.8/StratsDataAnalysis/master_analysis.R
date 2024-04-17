@@ -13,7 +13,7 @@ source('./Indicators/variance_ratio_test.R')
 source('./Indicators/hurst_exponent.R')
 
 #Returns volatility information of a given time series
-e <- function(series, lookback){
+analyseVolatility <- function(series, lookback){
   return(analysePeriodVol(series, lookback))
 }
 #Returns mean reversion information of a given time series

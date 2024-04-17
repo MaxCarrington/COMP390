@@ -10,7 +10,7 @@ source('./StratsDataAnalysis/master_analysis.R')
 source('./Plot/vector_plot.R')
 source('./set_up_strategies.R')
 # load data
-dataList <- getData(directory="PART1")
+dataList <- getData(directory="PART2")
 
 # strategy will be passed in as a command line argument from jenkins
 args <- commandArgs(trailingOnly = TRUE)
@@ -22,8 +22,8 @@ getParams <- function(tradingStrategy){
   params <- list()
   if(tradingStrategy == strategies$meanReversion)
     params <- list(stdDev=2, 
-                   series = c(6,7,8), 
-                   halfLives = c(48, 42, 50),
+                   series = c(6,7, 8), 
+                   halfLives = c(23, 51, 39),
                    pValueThreshMR = 0.95,
                    mrScoreThresh = 40
     )
@@ -62,7 +62,7 @@ getParams <- function(tradingStrategy){
 
 params <- list()
 if (length(args) < 1) {
-  tradingStrategy <- strategies$meanReversion
+  tradingStrategy <- strategies$marketMaking 
   params <- getParams(tradingStrategy)
 } else{
  tradingStrategy <- args[1]
@@ -92,7 +92,7 @@ outSampledataList <- lapply(dataList, function(x)
 load_strategy(tradingStrategy, params) # function from example_strategies.R
 
 sMult <- 0.20 # slippage multiplier
-results <- backtest(outSampledataList,getOrders,params,sMult)
+results <- backtest(inSampleDataList,getOrders,params,sMult)
 pfolioPnL <- plotResults(dataList,results,plotType='ggplot2')
 
 for (i in 1:length(results$pnlList)) {

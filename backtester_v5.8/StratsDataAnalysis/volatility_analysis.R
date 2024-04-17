@@ -171,6 +171,8 @@ stdATRVIXStdDev <- function(standardisedATRs, standardisedVIXs, standardisedStdD
 # Calculate the standard deviation of returns over a rolling window
 stdDevRollingWindow <- function(series, lookback){
   returns <- diff(log(ifelse(series$Close > 0, series$Close, NA)), lag = 1)
+  if(lookback > nrow(returns))
+    lookback <- nrow(returns) - 1
   rollingStdDev <- runSD(returns, n = lookback)
   return(rollingStdDev)
 }

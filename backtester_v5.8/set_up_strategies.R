@@ -51,8 +51,12 @@ suitableStratslist <- function(inSampleDataList){
     # Determine the strategy based on the analysis above
     strategy <- "None" # Default strategy
     if(momentumStats$stratType == strategies$momentum && !is.na(momentumStats$correlations$lookback)) {
+      print(paste("Momentum Lookback", momentumStats$correlations$lookback))
       strategy <- strategies$momentum
     }else if(mrStats$meanRevScore >= mrScoreThresh){
+      hl <- round(mrStats$attributes$HalfLife$HalfLife_WithIntercept)
+      print(paste("Half life:", hl) )
+      print(paste("Mean Rev Score:", mrStats$meanRevScore))
       strategy <- strategies$meanReversion
     } else if(volatilityStats$seriesVol == "Non-Volatile") {
       #MAYBE ADD back in:
@@ -191,7 +195,7 @@ setUpTradingParams <- function(tradingStrategy, strategies){
                   series=mrInfo$seriesIndexes, 
                   halfLives=mrInfo$halfLives, 
                   pValueThreshMR = pValueThreshMR,
-                  mrScoreThresh = mrScoreThresh))
+                  mrScoreThresh = 40))
     }
     else{
       cat("Mean reverison strategy can not run. No series are deemed suitable.", "\n")

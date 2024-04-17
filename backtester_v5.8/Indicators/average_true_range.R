@@ -33,7 +33,8 @@ calculateRollingATR <- function(series, lookback) {
     
     trueRanges[i] <- max(highLowDiff, highPrevClose, lowPrevClose)
   }
-  
+  if(lookback > length(trueRanges))
+    lookback <- length(trueRanges) - 1
   # Calculate rolling ATR
   rollingATR <- runMean(trueRanges, n = lookback)
   

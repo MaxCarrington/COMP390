@@ -4,10 +4,11 @@
 # on stable conditions. 
 #-------------------------------------------------------------------------------
 
-source("Indicators/average_true_range.R")
 source("StratsDataAnalysis/volatility_analysis.R")
 source("StratsDataAnalysis/volume_analysis.R")
 
+source('./RiskManagement/trade_record_management.R')
+source('./RiskManagement/turn_on_off_strategies.R')
 
 getOrders <- function(store, newRowList, currentPos, info, params) {
   #Change to turn on/off limit orders

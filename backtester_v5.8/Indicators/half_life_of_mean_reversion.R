@@ -15,6 +15,7 @@
 # Short Half-life: 1-10 days
 # Medium hald life: 10-30 days
 # Long hald life: 30-60 days
+
 calculateHalfLife <- function(series) {
   # Calculate yt-1 and (yt-1-yt)
   y.lag <- lag(series, k =1) # Set vector to lag -1 day

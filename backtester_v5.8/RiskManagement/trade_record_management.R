@@ -53,14 +53,12 @@ adjustPositions <- function(store, seriesIndex, holdingPeriod, positionSize, tod
     ifelse(close$tradeType == "buy",
            adjustedPositions <-  -close$size, # Close the buy position by selling off
            adjustedPositions <- close$size)
-    print(paste("Close position",adjustedPositions))
   }else{
     takeProfits <- checkTakeProfits(store, todaysOpen, seriesIndex)
     positions <- takeProfits$positionSize
     store <- takeProfits$store
     if(sum(positions) != 0){
       adjustedPositions <- adjustedPositions + sum(positions)
-      print(paste("TP adjusted Positions", adjustedPositions))
     }
   }
   stopLosses <- checkStopLossesHit(store, todaysOpen, seriesIndex)
@@ -68,7 +66,6 @@ adjustPositions <- function(store, seriesIndex, holdingPeriod, positionSize, tod
   store <- stopLosses$store
   if(sum(positions) != 0){
     adjustedPositions <- adjustedPositions + sum(positions)
-    print(paste("SL adjusted Positions", adjustedPositions))
   }
   return(list(updatedStore = store, pos = adjustedPositions))
 }
@@ -188,7 +185,7 @@ updateTradeHistory <- function(store, profit) {
   return(store)
 }
 #Update the date of the limit order to the current date as the order will be exected
-checkIfLimitPriceHit <- function(store, newRowList, series, seriesIndex){
+checkIfLimitPriceHit <- function(store, newRowList, series, seriesIndex, promptsOn = FALSE){
   latestDate <- index(last(store$ohlcv[[seriesIndex]]))
   tradeRecords <- store$tradeRecords[[seriesIndex]]
   if(length(store$tradeRecords[[seriesIndex]]) > 0){
@@ -203,13 +200,16 @@ checkIfLimitPriceHit <- function(store, newRowList, series, seriesIndex){
         todaysLow <- coredata(newRowList[[seriesIndex]]$Low)
         
         if((tradeDirection == "buy") && (todaysLow < entryPrice)){
-          #print(paste("A buy limit order has been executed at price:", entryPrice, "on the date:", latestDate, "because it is greater than todays low:", todaysLow, ". Executed on the date:", latestDate))
+          if(promptsOn)
+            print(paste("A buy limit order has been executed at price:", entryPrice, "on the date:", latestDate, "because it is greater than todays low:", todaysLow, ". Executed on the date:", latestDate))
           tradeRecord$entryDate <- latestDate 
         }else if ((tradeDirection == "sell") && (todaysHigh > entryPrice)){
-          #print(paste("A sell limit order has been executed at price:", entryPrice, "because it is less than todays high:", todaysHigh, ". Executed on the date:", latestDate))
+          if(promptsOn)
+            print(paste("A sell limit order has been executed at price:", entryPrice, "because it is less than todays high:", todaysHigh, ". Executed on the date:", latestDate))
           tradeRecord$entryDate <- latestDate
         } else{
-          #print("Limit order is being removed as the price does not reflect that which was set for the limit order")
+          if(promptsOn)
+            print("Limit order is being removed as the price does not reflect that which was set for the limit order")
           tradeRecord$entryDate <- latestDate
           tradeRecord$cancelled <- TRUE
           tradeRecord$closed <- TRUE
@@ -227,7 +227,6 @@ sellAllOpenPositions <- function(store, seriesIndex, exitPrice){
   adjustedPositions <- 0
   tradeRecords <- store$tradeRecords[[seriesIndex]]
   if(length(tradeRecords) > 0){
-    adjustedPositions <- 0
     exitDate <- index(last(store$ohlcv[[seriesIndex]]))
     for(i in 1:length(tradeRecords)){
       tradeRecord <- tradeRecords[[i]]
@@ -237,14 +236,14 @@ sellAllOpenPositions <- function(store, seriesIndex, exitPrice){
       positionSize <- tradeRecord$positionSize
       if(!closed){
         if(type == "buy"){
+          store <- closeTradeRecord(store, seriesIndex, tradeRecord)
           adjustedPositions <- adjustedPositions + positionSize
-          store <- closeTradeRecord(store, seriesIndex, tradeRecord)
         } else{
-          adjustedPositions <- adjustedPositions - positionSize 
           store <- closeTradeRecord(store, seriesIndex, tradeRecord)
+          adjustedPositions <- adjustedPositions - positionSize
         }
       }
     }
   }
-  return(list(adjustedPositions = adjustedPositions, store = store))
+  return(list(store = store, pos = adjustedPositions))
 }

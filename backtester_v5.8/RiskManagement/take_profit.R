@@ -10,7 +10,7 @@ calculateTakeProfit <- function(tradeType, entryPrice){
 }
 #This function checks if take profits have been hit, if they have, add them to 
 # a position to take profit
-checkTakeProfits <- function(store, todaysOpen, seriesIndex){
+checkTakeProfits <- function(store, todaysOpen, seriesIndex, promptsOn = FALSE){
   positionSize <- 0
   tradeRecords <- store$tradeRecords[[seriesIndex]]
   latestDate <- index(last(store$ohlcv[[seriesIndex]]))
@@ -22,11 +22,13 @@ checkTakeProfits <- function(store, todaysOpen, seriesIndex){
     isClosed <- tradeRecord$closed
     if(orderType == "buy" && todaysOpen >= takeProfit && !isClosed){
       positionSize <- positionSize  - tradeRecord$positionSize
-      #print(paste("A Take profit has been hit, at price", todaysOpen, " and selling", positionSize, "units, to cancel long trade"))
+      if(promptsOn)
+        print(paste("A Take profit has been hit, at price", todaysOpen, " and selling", positionSize, "units, to cancel long trade"))
       
     } else if(orderType == "sell" && todaysOpen <= takeProfit && !isClosed){
       positionSize <- positionSize + tradeRecord$positionSize
-      #print(paste("A Take profit has been hit, at price", todaysOpen, " and buying", positionSize, "units, to cancel short trade"))
+      if(promptsOn)
+        print(paste("A Take profit has been hit, at price", todaysOpen, " and buying", positionSize, "units, to cancel short trade"))
     }
     if(positionSize != 0)
       store <- closeTradeRecord(store, seriesIndex, tradeRecord)

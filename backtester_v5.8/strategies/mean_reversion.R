@@ -4,9 +4,11 @@
 # The key importance of this strategy is in the data analysis. The data analysis determines
 # half lives and then this is used to determine holding periods for mean reverison.
 #-------------------------------------------------------------------------------
+
 source('./RiskManagement/position_size_calc.R')
 source('./RiskManagement/trade_record_management.R')
 source('./RiskManagement/turn_on_off_strategies.R')
+
 getOrders <- function(store, newRowList, currentPos, info, params) {
   #Change to turn on/off limit orders
   limitOrdersOn <- TRUE
@@ -59,7 +61,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     else
       halfLife <- store$halfLives[i]
     #Only check if the strategy should be turned off, every 2 trading months don't want to check too often too much.
-    strategyOn <- TRUE
+    strategyOn <- store$strategyOn[i]
     
     #Only check if the strategy should be turned off, every 2 half lives - don't want to check too often too much.
     if(store$iter %% (halfLife * 2) == 0){
@@ -90,12 +92,11 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
         adjustedPositions <- adjust$pos
       }
     }
-    if(!strategyOn){
+    if(!strategyOn && sellAllOn){
       #If the strategy is turned off, we need to sell all of our positions
       sellAll <- sellAllOpenPositions(store, seriesIndex, todaysOpen)
       store <- sellAll$store  
-      adjustedPositions <- sellAll$adjustedPositions
-      print("All positions have been cancelled")
+      adjustedPositions <- sellAll$pos
     } else if (store$iter > halfLife) {
       #Ensure we are not using todays data as we would not have access to this
       hlcPrices <- head(store$ohlcv[[seriesIndex]][, c("High", "Low", "Close")], -1)
@@ -104,6 +105,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       if(ydaysClose < bbands[,"dn"]){
         entryPrice <- newRowList[[seriesIndex]]$Open
         tradeRecord <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "buy", halfLife)
+        #print("Buy position")
         store <- tradeRecord$store
         if(limitOrdersOn){
           limitPrices1[seriesIndex] <- tradeRecord$limitPrice 
@@ -115,6 +117,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       else if (ydaysClose < bbands[,"up"]){ #sell if the bands suggest the close is above the bollinger band
         entryPrice <- newRowList[[seriesIndex]]$Open
         tradeRecord <- createTradeRecord(store, seriesIndex, positionSize, entryPrice, "sell", halfLife)
+        #print("Sell position")
         store <- tradeRecord$store
         if(limitOrdersOn){
           limitPrices1[seriesIndex] <- tradeRecord$limitPrice 
@@ -133,7 +136,6 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
 #-------------------------------------------------------------------------------
 # Function to calculate Bollinger bands based on a lookback and standard deviation
 calculateBollingerBands <- function(hlcPrices, lookback, stdDev) {
-  
   if (is.xts(hlcPrices) && all(c("High", "Low", "Close") %in% colnames(hlcPrices))) {
     bbands <- BBands(HLC = hlcPrices, n = lookback, sd = stdDev)
     return(bbands)
@@ -151,13 +153,14 @@ initStore <- function(newRowList, series) {
   tradeRecords <- vector("list", length = 10) # Ensure tradeRecords is large enough
   tradeHistory <- list(wins = numeric(0), losses = numeric(0))
   halfLives <- rep(0,10)
+  strategyOn <- rep(TRUE, length(series))
   for (s in series) {
     ohlcvStore[[s]] <- xts(matrix(numeric(0), ncol = 5, dimnames = list(NULL, c("Open", "High", "Low", "Close", "Volume"))),
                            order.by = as.Date(character()))
   }
   count <- vector(mode = "numeric", length = length(series))
   
-  return(list(iter = 0, ohlcv = ohlcvStore, count = count, tradeRecords = tradeRecords, tradeHistory = tradeHistory, halfLives = halfLives))
+  return(list(iter = 0, ohlcv = ohlcvStore, count = count, tradeRecords = tradeRecords, tradeHistory = tradeHistory, halfLives = halfLives, strategyOn = strategyOn))
 }
 
 #Updates the store

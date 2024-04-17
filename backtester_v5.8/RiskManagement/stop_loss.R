@@ -154,15 +154,15 @@ maxDailyLossOfTrade <- function(currentPrice, entryPrice, currentBalance, curren
 #Set to half of the take profit so far
 calculateStopLoss <- function(tradeType, entryPrice){
   if(tradeType == "buy"){
-    stopLoss <- entryPrice * 0.875
+    stopLoss <- entryPrice * 0.9
   }else{ #Must be a sell
-    stopLoss <- entryPrice * 1.125
+    stopLoss <- entryPrice * 1.1
   }
   return(coredata(stopLoss))
 }
 #This function checks if stop losses have been hit, if they have, add them to a 
 # position so the trade is cancelled
-checkStopLossesHit <- function(store, todaysOpen, seriesIndex){
+checkStopLossesHit <- function(store, todaysOpen, seriesIndex, promptsOn = FALSE){
   positionSize <- 0
   tradeRecords <- store$tradeRecords[[seriesIndex]]
   latestDate <- index(last(store$ohlcv[[seriesIndex]]))
@@ -174,11 +174,13 @@ checkStopLossesHit <- function(store, todaysOpen, seriesIndex){
     isClosed <- tradeRecord$closed
     if(orderType == "buy" && todaysOpen <= stopLoss && !isClosed){
       positionSize <- positionSize -tradeRecord$positionSize
-      #print(paste("A Stop loss has been hit, at price", todaysOpen, " and selling", positionSize, "units, to cancel long trade"))
+      if(promptsOn)
+        print(paste("A Stop loss has been hit, at price", todaysOpen, " and selling", positionSize, "units, to cancel long trade"))
       
     } else if(orderType == "sell" && todaysOpen >= stopLoss && !isClosed){
       positionSize <- positionSize + tradeRecord$positionSize
-      #print(paste("A Stop loss has been hit, at price", todaysOpen, " and buying", positionSize, "units, to cancel long trade"))
+      if(promptsOn)
+        print(paste("A Stop loss has been hit, at price", todaysOpen, " and buying", positionSize, "units, to cancel long trade"))
     }
     if(positionSize != 0)
       store <- closeTradeRecord(store, seriesIndex, tradeRecord)
